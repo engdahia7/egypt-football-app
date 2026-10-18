@@ -48,6 +48,42 @@ jobs:
           PY
       - name: Get Dependencies
         run: flutter pub get
+      - name: Generate App Icon
+        run: |
+          pip install pillow
+          mkdir -p assets
+          python3 - <<'PY'
+          import math
+          from PIL import Image, ImageDraw
+
+          def ball(d, cx, cy, r):
+              d.ellipse([cx-r, cy-r, cx+r, cy+r], fill="white", outline="#38BDF8", width=int(r*0.05))
+              pr = r * 0.38
+              pts = []
+              for i in range(5):
+                  a = math.radians(-90 + 72 * i)
+                  pts.append((cx + pr*math.cos(a), cy + pr*math.sin(a)))
+              d.polygon(pts, fill="#0F172A")
+              for i in range(5):
+                  a = math.radians(-90 + 72 * i)
+                  x1, y1 = cx + pr*math.cos(a), cy + pr*math.sin(a)
+                  x2, y2 = cx + r*0.82*math.cos(a), cy + r*0.82*math.sin(a)
+                  d.line([x1, y1, x2, y2], fill="#0F172A", width=int(r*0.05))
+                  b = a + math.radians(36)
+                  px, py = cx + r*0.80*math.cos(b), cy + r*0.80*math.sin(b)
+                  d.ellipse([px-r*0.12, py-r*0.12, px+r*0.12, py+r*0.12], fill="#0F172A")
+
+          S = 1024
+          icon = Image.new("RGB", (S, S), "#0F172A")
+          ball(ImageDraw.Draw(icon), S/2, S/2, 380)
+          icon.save("assets/icon.png")
+
+          fg = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+          ball(ImageDraw.Draw(fg), S/2, S/2, 290)
+          fg.save("assets/icon_fg.png")
+          PY
+      - name: Apply App Icon
+        run: dart run flutter_launcher_icons
       - name: Build APK
         run: flutter build apk --release --split-per-abi --no-tree-shake-icons
       - name: Publish Release
