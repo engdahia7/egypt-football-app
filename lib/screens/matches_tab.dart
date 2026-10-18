@@ -18,6 +18,8 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
   bool isLoading = false;
   List<dynamic> filteredMatches = [];
   FavoriteTeam? favoriteTeam;
+  String? errorMsg;
+  int totalFromApi = 0;
 
   @override
   void initState() {
@@ -34,7 +36,10 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
   Future<void> loadMatches({bool forceRefresh = false}) async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      errorMsg = null;
+    });
     final String dateStr = formatDate(selectedDate);
     try {
       final data = await SmartApiCache.get(
@@ -43,6 +48,15 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
         ttl: const Duration(minutes: 15),
         forceRefresh: forceRefresh,
       );
+
+      String? apiError;
+      final errors = data['errors'];
+      if (errors is Map && errors.isNotEmpty) {
+        apiError = errors.values.join(' | ');
+      } else if (errors is List && errors.isNotEmpty) {
+        apiError = errors.join(' | ');
+      }
+
       final List<dynamic> allMatches = data['response'] ?? [];
       final List<dynamic> egyptMatches = allMatches.where((match) {
         final int leagueId = match['league']['id'];
@@ -57,10 +71,15 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
 
       setState(() {
         filteredMatches = egyptMatches;
+        totalFromApi = allMatches.length;
+        errorMsg = apiError;
         isLoading = false;
       });
-    } catch (_) {
-      setState(() => isLoading = false);
+    } catch (e) {
+      setState(() {
+        errorMsg = e.toString();
+        isLoading = false;
+      });
     }
   }
 
@@ -86,6 +105,37 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
         await NotificationService.cancelAllReminders();
       }
     }
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              errorMsg != null
+                  ? 'حدث خطأ أثناء جلب البيانات:'
+                  : 'لا توجد مباريات للفرق المصرية في هذا اليوم',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54),
+            ),
+            if (errorMsg != null) ...[
+              const SizedBox(height: 10),
+              Text(errorMsg!,
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+            ] else ...[
+              const SizedBox(height: 10),
+              Text('عدد المباريات العالمية المستلمة: $totalFromApi',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12)),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -140,7 +190,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
                 : filteredMatches.isEmpty
-                    ? const Center(child: Text('لا توجد مباريات للفرق المصرية في هذا اليوم', style: TextStyle(color: Colors.white54)))
+                    ? _buildEmptyState()
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         itemCount: filteredMatches.length,
