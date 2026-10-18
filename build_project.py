@@ -69,6 +69,26 @@ jobs:
         run: |
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/><uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"\/><application/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
+           - name: Enable Desugaring
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          kts = Path("android/app/build.gradle.kts")
+          groovy = Path("android/app/build.gradle")
+          if kts.exists():
+              s = kts.read_text()
+              s = re.sub(r"(compileOptions\s*\{)", r"\1\n        isCoreLibraryDesugaringEnabled = true", s, count=1)
+              s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+              kts.write_text(s)
+          elif groovy.exists():
+              s = groovy.read_text()
+              s = re.sub(r"(compileOptions\s*\{)", r"\1\n        coreLibraryDesugaringEnabled true", s, count=1)
+              s += "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n"
+              groovy.write_text(s)
+          else:
+              raise SystemExit("android/app/build.gradle not found")
+          PY
       - name: Get Dependencies
         run: flutter pub get
       - name: Build APK
