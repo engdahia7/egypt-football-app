@@ -10,8 +10,7 @@ class CachedScorersTab extends StatefulWidget {
 }
 
 class _CachedScorersTabState extends State<CachedScorersTab> {
-  int selectedLeagueId = 233;
-  int selectedSeason = 2025;
+  int selectedCompId = 552;
   bool isLoading = false;
   List<dynamic> scorers = [];
 
@@ -25,13 +24,15 @@ class _CachedScorersTabState extends State<CachedScorersTab> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'scorers_${selectedLeagueId}_$selectedSeason',
-        url: 'https://v3.football.api-sports.io/players/topscorers?league=$selectedLeagueId&season=$selectedSeason',
-        ttl: const Duration(hours: 6),
+        cacheKey: '365_scorers_$selectedCompId',
+        url: 'https://webws.365scores.com/web/stats/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
+        ttl: const Duration(hours: 2),
         forceRefresh: forceRefresh,
       );
+
+      final List<dynamic> athletesStats = data['stats']?['athletesStats'] ?? [];
       setState(() {
-        scorers = data['response'] ?? [];
+        scorers = athletesStats.isNotEmpty ? (athletesStats.first['rows'] ?? []) : [];
         isLoading = false;
       });
     } catch (_) {
@@ -53,35 +54,70 @@ class _CachedScorersTabState extends State<CachedScorersTab> {
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-          : scorers.isEmpty
-              ? const Center(child: Text('لا توجد بيانات هدافين متاحة'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: scorers.length,
-                  itemBuilder: (context, index) {
-                    final item = scorers[index];
-                    final player = item['player'];
-                    final stats = (item['statistics'] as List).first;
-                    final goals = stats['goals']['total'] ?? 0;
+      body: Column(
+        children: [
+          Container(
+            color: const Color(0xFF1E293B),
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildChip(552, 'الدوري المصري'),
+                _buildChip(572, 'أبطال أفريقيا'),
+                _buildChip(573, 'الكونفدرالية'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                : scorers.isEmpty
+                    ? const Center(child: Text('لا توجد إحصائيات هدافين متاحة حالياً'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: scorers.length,
+                        itemBuilder: (context, index) {
+                          final item = scorers[index];
+                          final entity = item['entity'] ?? {};
+                          final comp = item['competitor'] ?? {};
+                          final goals = (item['stats'] as List?)?.isNotEmpty == true
+                              ? item['stats'][0]['value']
+                              : '0';
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(player['photo'] ?? ''),
-                        ),
-                        title: Text(player['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(AppConstants.translate(stats['team']['name'])),
-                        trailing: Text(
-                          '$goals هدف',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
-                        ),
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF0F172A),
+                                backgroundImage: NetworkImage(AppConstants.playerPhoto(entity['id'] ?? 0)),
+                              ),
+                              title: Text(entity['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(comp['name'] ?? ''),
+                              trailing: Text(
+                                '$goals هدف',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip(int id, String label) {
+    final bool active = selectedCompId == id;
+    return ChoiceChip(
+      label: Text(label),
+      selected: active,
+      selectedColor: const Color(0xFF38BDF8),
+      labelStyle: TextStyle(color: active ? Colors.black : Colors.white, fontSize: 12),
+      onSelected: (_) {
+        setState(() => selectedCompId = id);
+        loadScorers();
+      },
     );
   }
 }

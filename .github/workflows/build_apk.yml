@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK (365Scores Engine)
 
 on:
   push:
@@ -17,18 +17,18 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Create Structure
+      - name: Create Android Platform
         run: flutter create --platforms=android --org com.egyptfootball.app .
-      - name: Fix Manifest
+      - name: Add Internet Permission
         run: |
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/><uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"\/><application/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
       - name: Get Dependencies
         run: flutter pub get
-      - name: Build APK
+      - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
-      - name: Upload Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Egyptian-Football-APK
+          name: Egyptian-Football-365-APK
           path: build/app/outputs/flutter-apk/app-release.apk

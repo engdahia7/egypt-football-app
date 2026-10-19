@@ -8,16 +8,23 @@ class MatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final homeTeam = match['teams']['home'];
-    final awayTeam = match['teams']['away'];
-    final goals = match['goals'];
-    final status = match['fixture']['status'];
-    final String shortStatus = status['short'];
-    final int? elapsed = status['elapsed'];
-    final String matchTime = match['fixture']['date'].substring(11, 16);
+    final home = match['homeCompetitor'] ?? {};
+    final away = match['awayCompetitor'] ?? {};
+    final int homeId = home['id'] ?? 0;
+    final int awayId = away['id'] ?? 0;
+    final int homeScore = (home['score'] ?? -1).toInt();
+    final int awayScore = (away['score'] ?? -1).toInt();
 
-    final bool isLive = ['1H', '2H', 'HT', 'ET', 'P'].contains(shortStatus);
-    final bool isFinished = ['FT', 'AET', 'PEN'].contains(shortStatus);
+    // statusGroup: 2 = لم تبدأ | 3 = جارية الآن (مباشر) | 4 = انتهت
+    final int statusGroup = match['statusGroup'] ?? 2;
+    final String statusText = match['statusText'] ?? '';
+    final String compName = match['competitionDisplayName'] ?? '';
+    final String startTimeStr = match['startTime'] ?? '';
+    final String timeOnly = startTimeStr.length >= 16 ? startTimeStr.substring(11, 16) : '';
+
+    final bool isLive = statusGroup == 3;
+    final bool isFinished = statusGroup == 4;
+    final bool hasScore = homeScore >= 0 && awayScore >= 0;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -27,7 +34,7 @@ class MatchCard extends StatelessWidget {
           MaterialPageRoute(
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
-              child: MatchDetailsScreen(fixtureId: match['fixture']['id']),
+              child: MatchDetailsScreen(gameId: match['id']),
             ),
           ),
         );
@@ -36,59 +43,83 @@ class MatchCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          child: Row(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          child: Column(
             children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    Image.network(homeTeam['logo'], width: 38, height: 38),
-                    const SizedBox(height: 6),
-                    Text(AppConstants.translate(homeTeam['name']),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  ],
-                ),
+              // اسم البطولة في أعلى الكارت
+              Text(
+                compName,
+                style: const TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.w600),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      (isLive || isFinished)
-                          ? '${goals['home'] ?? 0}  -  ${goals['away'] ?? 0}'
-                          : matchTime,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: (isLive || isFinished) ? Colors.white : const Color(0xFF38BDF8),
-                      ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Image.network(
+                          AppConstants.teamLogo(homeId),
+                          width: 38,
+                          height: 38,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 36),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          home['name'] ?? '',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isLive ? 'مباشر $elapsed\'' : (isFinished ? 'انتهت' : 'لم تبدأ'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isLive ? Colors.redAccent : (isFinished ? Colors.greenAccent : Colors.white54),
-                      ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Image.network(awayTeam['logo'], width: 38, height: 38),
-                    const SizedBox(height: 6),
-                    Text(AppConstants.translate(awayTeam['name']),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  ],
-                ),
+                    child: Column(
+                      children: [
+                        Text(
+                          hasScore ? '$homeScore  -  $awayScore' : timeOnly,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: hasScore ? Colors.white : const Color(0xFF38BDF8),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isLive ? '🔴 $statusText (${match['gameTimeDisplay'] ?? ''})' : statusText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isLive
+                                ? Colors.redAccent
+                                : (isFinished ? Colors.greenAccent : Colors.white54),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Image.network(
+                          AppConstants.teamLogo(awayId),
+                          width: 38,
+                          height: 38,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 36),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          away['name'] ?? '',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

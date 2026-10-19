@@ -1,25 +1,22 @@
 import os
 
-# ضع مفتاح الـ API المجاني الخاص بك هنا بين العلامتين
-API_KEY = "81a51f1b684ceae4a9006feb5e06232b"
-
 def write_file(path, content):
     folder = os.path.dirname(path)
     if folder and not os.path.exists(folder):
         os.makedirs(folder, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content.strip() + "\n")
-    print(f"✅ تم إنشاء: {path}")
+    print(f"✅ تم تحديث: {path}")
 
 def build():
-    print("🚀 جاري بناء ملفات المشروع...")
+    print("🚀 جاري تحويل المشروع بالكامل إلى محرك 365Scores المعرب والمفتوح...")
 
-    # 1. pubspec.yaml
+    # 1. pubspec.yaml (خفيف ومستقر جداً لبناء الـ APK بدون أخطاء)
     write_file("pubspec.yaml", r'''
 name: egyptian_football_app
-description: تطبيق متابعة الفرق والبطولات المصرية
+description: تطبيق الكرة المصرية - محرك 365Scores المباشر
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -29,8 +26,6 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   shared_preferences: ^2.2.3
-  flutter_local_notifications: ^17.2.0
-  timezone: ^0.9.2
   share_plus: ^10.0.0
   path_provider: ^2.1.3
 
@@ -44,7 +39,7 @@ flutter:
 
     # 2. GitHub Actions Workflow
     write_file(".github/workflows/build_apk.yml", r'''
-name: Build APK
+name: Build APK (365Scores Engine)
 
 on:
   push:
@@ -63,64 +58,49 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Create Structure
+      - name: Create Android Platform
         run: flutter create --platforms=android --org com.egyptfootball.app .
-      - name: Fix Manifest
+      - name: Add Internet Permission
         run: |
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/><uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"\/><application/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
       - name: Get Dependencies
         run: flutter pub get
-      - name: Build APK
+      - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
-      - name: Upload Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Egyptian-Football-APK
+          name: Egyptian-Football-365-APK
           path: build/app/outputs/flutter-apk/app-release.apk
 ''')
 
-    # 3. app_constants.dart
+    # 3. الثوابت وأكواد 365Scores الرسمية للبطولات والفرق المصرية
     write_file("lib/core/app_constants.dart", r'''
 class AppConstants {
-  static final Set<int> egyptianLeagueIds = {233, 714, 539, 895};
-  static final Set<int> egyptianTeamIds = {
-    1023, 1040, 1032, 1029, 1030, 1028, 1036, 1039, 1025, 1037, 1041, 1042, 1026, 1570
-  };
-  static final Map<String, String> arabicNames = {
-    'Al Ahly': 'الأهلي',
-    'Zamalek SC': 'الزمالك',
-    'Pyramids FC': 'بيراميدز',
-    'Al Masry': 'المصري البورسعيدي',
-    'Al Ittihad': 'الاتحاد السكندري',
-    'Ismaily SC': 'الإسماعيلي',
-    'Modern Sport': 'مودرن سبورت',
-    'Ceramica Cleopatra': 'سيراميكا كليوباترا',
-    'Enppi': 'إنبي',
-    'Smouha SC': 'سموحة',
-    "Tala'ea El Gaish": 'طلائع الجيش',
-    'ZED FC': 'زد إف سي',
-    'Ghazl El Mahallah': 'غزل المحلة',
-    'Egypt': 'منتخب مصر',
-    'Premier League': 'الدوري المصري الممتاز',
-    'Egypt Cup': 'كأس مصر',
-    'CAF Champions League': 'دوري أبطال أفريقيا',
-    'CAF Confederation Cup': 'كأس الكونفدرالية الأفريقية',
-    'CAF Super Cup': 'السوبر الأفريقي',
-  };
-  static String translate(String name) => arabicNames[name] ?? name;
+  // أكواد البطولات في 365Scores:
+  // 552: الدوري المصري | 553: كأس مصر | 1129: السوبر المصري
+  // 572: دوري أبطال أفريقيا | 573: الكونفدرالية الأفريقية
+  static const String egyptCompetitions = '552,553,1129,572,573';
+
+  static String teamLogo(int teamId) =>
+      'https://imagecache.365scores.com/image/upload/f_png,w_80,h_80,c_limit,q_auto:eco,d_Competitors:default1.png/v1/Competitors/$teamId';
+
+  static String competitionLogo(int compId) =>
+      'https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco,d_Countries:Round:default.png/v1/Competitions/$compId';
+
+  static String playerPhoto(int athleteId) =>
+      'https://imagecache.365scores.com/image/upload/f_png,w_80,h_80,c_limit,q_auto:eco,d_Athletes:default.png/v1/Athletes/$athleteId';
 }
 ''')
 
-    # 4. smart_api_cache.dart
-    smart_cache_code = r'''
+    # 4. مدير الاتصال والكاش لمحرك 365Scores (بدون مفتاح API)
+    write_file("lib/core/smart_api_cache.dart", r'''
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SmartApiCache {
-  static const String apiKey = '__API_KEY__';
-
   static Future<Map<String, dynamic>> get({
     required String cacheKey,
     required String url,
@@ -128,8 +108,8 @@ class SmartApiCache {
     bool forceRefresh = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final String? cachedJson = prefs.getString('data_$cacheKey');
-    final int? cachedTime = prefs.getInt('time_$cacheKey');
+    final String? cachedJson = prefs.getString('365_data_$cacheKey');
+    final int? cachedTime = prefs.getInt('365_time_$cacheKey');
     final int now = DateTime.now().millisecondsSinceEpoch;
 
     if (!forceRefresh && cachedJson != null && cachedTime != null) {
@@ -142,18 +122,20 @@ class SmartApiCache {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'x-apisports-key': apiKey},
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['errors'] == null || (data['errors'] as dynamic).isEmpty) {
-          await prefs.setString('data_$cacheKey', response.body);
-          await prefs.setInt('time_$cacheKey', now);
-        }
+        final String bodyText = utf8.decode(response.bodyBytes);
+        final Map<String, dynamic> data = json.decode(bodyText);
+        await prefs.setString('365_data_$cacheKey', bodyText);
+        await prefs.setInt('365_time_$cacheKey', now);
         return data;
       } else {
-        throw Exception('Error: ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
       if (cachedJson != null) {
@@ -163,74 +145,47 @@ class SmartApiCache {
     }
   }
 }
-'''.replace("__API_KEY__", API_KEY)
-    write_file("lib/core/smart_api_cache.dart", smart_cache_code)
+''')
 
-    # 5. notification_service.dart
+    # 5. خدمة تنبيهات مبسطة ومستقرة
     write_file("lib/core/notification_service.dart", r'''
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
-
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
-  static Future<void> init() async {
-    tz.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Africa/Cairo'));
-    const AndroidInitializationSettings initAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initSettings =
-        InitializationSettings(android: initAndroid);
-    await _notificationsPlugin.initialize(initSettings);
-    await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-  }
-
-  static Future<void> cancelAllReminders() async {
-    await _notificationsPlugin.cancelAll();
-  }
+  static Future<void> init() async {}
+  static Future<void> cancelAllReminders() async {}
 }
 ''')
 
-    # 6. favorite_team.dart
+    # 6. موديل الفريق المفضل
     write_file("lib/models/favorite_team.dart", r'''
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FavoriteTeam {
-  final int id;
-  final String name;
+  final String name; // نعتمد على الاسم العربي المطابق في 365Scores
   final String logo;
   bool notificationsEnabled;
 
   FavoriteTeam({
-    required this.id,
     required this.name,
     required this.logo,
     this.notificationsEnabled = true,
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
         'name': name,
         'logo': logo,
         'notificationsEnabled': notificationsEnabled,
       };
 
   factory FavoriteTeam.fromJson(Map<String, dynamic> json) => FavoriteTeam(
-        id: json['id'],
-        name: json['name'],
-        logo: json['logo'],
+        name: json['name'] ?? 'الأهلي',
+        logo: json['logo'] ?? '',
         notificationsEnabled: json['notificationsEnabled'] ?? true,
       );
 }
 
 class FavoriteTeamManager {
-  static const String _key = 'favorite_team_data';
+  static const String _key = 'fav_team_365';
 
   static Future<void> saveFavorite(FavoriteTeam team) async {
     final prefs = await SharedPreferences.getInstance();
@@ -246,7 +201,7 @@ class FavoriteTeamManager {
 }
 ''')
 
-    # 7. favorite_team_banner.dart
+    # 7. شريط الفريق المفضل العلوي
     write_file("lib/widgets/favorite_team_banner.dart", r'''
 import 'package:flutter/material.dart';
 import '../models/favorite_team.dart';
@@ -255,16 +210,12 @@ class FavoriteTeamBanner extends StatelessWidget {
   final FavoriteTeam? favoriteTeam;
   final List<dynamic> allMatches;
   final VoidCallback onSelectTeamClicked;
-  final VoidCallback onToggleNotifications;
-  final String Function(String) translateName;
 
   const FavoriteTeamBanner({
     super.key,
     required this.favoriteTeam,
     required this.allMatches,
     required this.onSelectTeamClicked,
-    required this.onToggleNotifications,
-    required this.translateName,
   });
 
   @override
@@ -301,9 +252,9 @@ class FavoriteTeamBanner extends StatelessWidget {
 
     dynamic teamMatch;
     for (var m in allMatches) {
-      final int homeId = m['teams']['home']['id'];
-      final int awayId = m['teams']['away']['id'];
-      if (homeId == favoriteTeam!.id || awayId == favoriteTeam!.id) {
+      final String hName = m['homeCompetitor']?['name'] ?? '';
+      final String aName = m['awayCompetitor']?['name'] ?? '';
+      if (hName.contains(favoriteTeam!.name) || aName.contains(favoriteTeam!.name)) {
         teamMatch = m;
         break;
       }
@@ -325,41 +276,27 @@ class FavoriteTeamBanner extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Image.network(favoriteTeam!.logo, width: 24, height: 24),
+                  const Icon(Icons.stars, color: Colors.amber, size: 22),
                   const SizedBox(width: 8),
-                  Text('مباريات ${favoriteTeam!.name}',
+                  Text('فريقي المفضل: ${favoriteTeam!.name}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.amber)),
                 ],
               ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      favoriteTeam!.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
-                      color: favoriteTeam!.notificationsEnabled ? const Color(0xFF38BDF8) : Colors.white54,
-                      size: 20,
-                    ),
-                    onPressed: onToggleNotifications,
-                    constraints: const BoxConstraints(),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  GestureDetector(
-                    onTap: onSelectTeamClicked,
-                    child: const Text('تغيير', style: TextStyle(fontSize: 11, color: Colors.white54)),
-                  ),
-                ],
+              GestureDetector(
+                onTap: onSelectTeamClicked,
+                child: const Text('تغيير الفريق', style: TextStyle(fontSize: 12, color: Color(0xFF38BDF8))),
               ),
             ],
           ),
           const Divider(height: 16, color: Colors.white12),
           teamMatch == null
-              ? const Text('لا توجد مباريات مسجلة لهذا الفريق اليوم 📅',
+              ? const Text('لا توجد مباراة مسجلة لفريقك في هذا التاريخ 📅',
                   style: TextStyle(fontSize: 12, color: Colors.white60))
               : Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(translateName(teamMatch['teams']['home']['name']),
+                      child: Text(teamMatch['homeCompetitor']['name'] ?? '',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     Container(
@@ -369,14 +306,14 @@ class FavoriteTeamBanner extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        teamMatch['fixture']['status']['short'] == 'NS'
-                            ? teamMatch['fixture']['date'].substring(11, 16)
-                            : '${teamMatch['goals']['home'] ?? 0} - ${teamMatch['goals']['away'] ?? 0}',
+                        teamMatch['statusGroup'] == 2
+                            ? (teamMatch['startTime'] ?? '').toString().substring(11, 16)
+                            : '${teamMatch['homeCompetitor']['score'] ?? 0} - ${teamMatch['awayCompetitor']['score'] ?? 0}',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
                       ),
                     ),
                     Expanded(
-                      child: Text(translateName(teamMatch['teams']['away']['name']),
+                      child: Text(teamMatch['awayCompetitor']['name'] ?? '',
                           textAlign: TextAlign.left,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
@@ -392,12 +329,20 @@ class SelectFavoriteTeamDialog extends StatelessWidget {
   final Function(FavoriteTeam) onTeamSelected;
   const SelectFavoriteTeamDialog({super.key, required this.onTeamSelected});
 
-  final List<Map<String, dynamic>> egyptianTeamsList = const [
-    {'id': 1023, 'name': 'الأهلي', 'logo': 'https://media.api-sports.io/football/teams/1023.png'},
-    {'id': 1040, 'name': 'الزمالك', 'logo': 'https://media.api-sports.io/football/teams/1040.png'},
-    {'id': 1032, 'name': 'بيراميدز', 'logo': 'https://media.api-sports.io/football/teams/1032.png'},
-    {'id': 1029, 'name': 'المصري البورسعيدي', 'logo': 'https://media.api-sports.io/football/teams/1029.png'},
-    {'id': 1570, 'name': 'منتخب مصر', 'logo': 'https://media.api-sports.io/football/teams/1570.png'},
+  final List<String> egyptianTeams = const [
+    'الأهلي',
+    'الزمالك',
+    'بيراميدز',
+    'المصري',
+    'الاتحاد السكندري',
+    'الإسماعيلي',
+    'سيراميكا كليوباترا',
+    'مودرن سبورت',
+    'سموحة',
+    'إنبي',
+    'غزل المحلة',
+    'زد',
+    'مصر',
   ];
 
   @override
@@ -409,14 +354,14 @@ class SelectFavoriteTeamDialog extends StatelessWidget {
         width: double.maxFinite,
         child: ListView.builder(
           shrinkWrap: true,
-          itemCount: egyptianTeamsList.length,
+          itemCount: egyptianTeams.length,
           itemBuilder: (context, index) {
-            final t = egyptianTeamsList[index];
+            final name = egyptianTeams[index];
             return ListTile(
-              leading: Image.network(t['logo'], width: 30, height: 30),
-              title: Text(t['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              leading: const Icon(Icons.shield, color: Color(0xFF38BDF8)),
+              title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
               onTap: () {
-                onTeamSelected(FavoriteTeam(id: t['id'], name: t['name'], logo: t['logo']));
+                onTeamSelected(FavoriteTeam(name: name, logo: ''));
                 Navigator.pop(context);
               },
             );
@@ -428,7 +373,7 @@ class SelectFavoriteTeamDialog extends StatelessWidget {
 }
 ''')
 
-    # 8. match_card.dart
+    # 8. كارت المباراة لبيانات 365Scores العربية
     write_file("lib/widgets/match_card.dart", r'''
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
@@ -440,16 +385,23 @@ class MatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final homeTeam = match['teams']['home'];
-    final awayTeam = match['teams']['away'];
-    final goals = match['goals'];
-    final status = match['fixture']['status'];
-    final String shortStatus = status['short'];
-    final int? elapsed = status['elapsed'];
-    final String matchTime = match['fixture']['date'].substring(11, 16);
+    final home = match['homeCompetitor'] ?? {};
+    final away = match['awayCompetitor'] ?? {};
+    final int homeId = home['id'] ?? 0;
+    final int awayId = away['id'] ?? 0;
+    final int homeScore = (home['score'] ?? -1).toInt();
+    final int awayScore = (away['score'] ?? -1).toInt();
 
-    final bool isLive = ['1H', '2H', 'HT', 'ET', 'P'].contains(shortStatus);
-    final bool isFinished = ['FT', 'AET', 'PEN'].contains(shortStatus);
+    // statusGroup: 2 = لم تبدأ | 3 = جارية الآن (مباشر) | 4 = انتهت
+    final int statusGroup = match['statusGroup'] ?? 2;
+    final String statusText = match['statusText'] ?? '';
+    final String compName = match['competitionDisplayName'] ?? '';
+    final String startTimeStr = match['startTime'] ?? '';
+    final String timeOnly = startTimeStr.length >= 16 ? startTimeStr.substring(11, 16) : '';
+
+    final bool isLive = statusGroup == 3;
+    final bool isFinished = statusGroup == 4;
+    final bool hasScore = homeScore >= 0 && awayScore >= 0;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -459,7 +411,7 @@ class MatchCard extends StatelessWidget {
           MaterialPageRoute(
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
-              child: MatchDetailsScreen(fixtureId: match['fixture']['id']),
+              child: MatchDetailsScreen(gameId: match['id']),
             ),
           ),
         );
@@ -468,59 +420,83 @@ class MatchCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          child: Row(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          child: Column(
             children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    Image.network(homeTeam['logo'], width: 38, height: 38),
-                    const SizedBox(height: 6),
-                    Text(AppConstants.translate(homeTeam['name']),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  ],
-                ),
+              // اسم البطولة في أعلى الكارت
+              Text(
+                compName,
+                style: const TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.w600),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      (isLive || isFinished)
-                          ? '${goals['home'] ?? 0}  -  ${goals['away'] ?? 0}'
-                          : matchTime,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: (isLive || isFinished) ? Colors.white : const Color(0xFF38BDF8),
-                      ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Image.network(
+                          AppConstants.teamLogo(homeId),
+                          width: 38,
+                          height: 38,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 36),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          home['name'] ?? '',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isLive ? 'مباشر $elapsed\'' : (isFinished ? 'انتهت' : 'لم تبدأ'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isLive ? Colors.redAccent : (isFinished ? Colors.greenAccent : Colors.white54),
-                      ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Image.network(awayTeam['logo'], width: 38, height: 38),
-                    const SizedBox(height: 6),
-                    Text(AppConstants.translate(awayTeam['name']),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  ],
-                ),
+                    child: Column(
+                      children: [
+                        Text(
+                          hasScore ? '$homeScore  -  $awayScore' : timeOnly,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: hasScore ? Colors.white : const Color(0xFF38BDF8),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isLive ? '🔴 $statusText (${match['gameTimeDisplay'] ?? ''})' : statusText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isLive
+                                ? Colors.redAccent
+                                : (isFinished ? Colors.greenAccent : Colors.white54),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Image.network(
+                          AppConstants.teamLogo(awayId),
+                          width: 38,
+                          height: 38,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 36),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          away['name'] ?? '',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -531,117 +507,128 @@ class MatchCard extends StatelessWidget {
 }
 ''')
 
-    # 9. soccer_pitch_widget.dart
+    # 9. الملعب التكتيكي المرسوم لتشكيل 365Scores
     write_file("lib/widgets/soccer_pitch_widget.dart", r'''
 import 'package:flutter/material.dart';
 
 class SoccerPitchWidget extends StatelessWidget {
-  final Map<String, dynamic> homeLineup;
-  final Map<String, dynamic> awayLineup;
+  final Map<String, dynamic> homeComp;
+  final Map<String, dynamic> awayComp;
 
-  const SoccerPitchWidget({super.key, required this.homeLineup, required this.awayLineup});
+  const SoccerPitchWidget({super.key, required this.homeComp, required this.awayComp});
 
   @override
   Widget build(BuildContext context) {
-    final List<dynamic> homeXI = homeLineup['startXI'] ?? [];
-    final List<dynamic> awayXI = awayLineup['startXI'] ?? [];
+    final List<dynamic> homeMembers = homeComp['lineups']?['members'] ?? [];
+    final List<dynamic> awayMembers = awayComp['lineups']?['members'] ?? [];
+
+    // status == 1 تعني لاعب أساسي في تشكيل 365Scores
+    final List<dynamic> homeStarting = homeMembers.where((m) => m['status'] == 1).toList();
+    final List<dynamic> awayStarting = awayMembers.where((m) => m['status'] == 1).toList();
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
-      height: 640,
+      height: 620,
       width: double.infinity,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
             Positioned.fill(child: CustomPaint(painter: PitchPainter())),
-            ..._buildTeamNodes(players: homeXI, isHome: true, shirtColor: const Color(0xFF0284C7)),
-            ..._buildTeamNodes(players: awayXI, isHome: false, shirtColor: const Color(0xFFE11D48)),
+            ..._buildTeamFormation(
+              players: homeStarting,
+              formationStr: homeComp['lineups']?['formation'] ?? '4-3-3',
+              isHome: true,
+              shirtColor: const Color(0xFF0284C7),
+            ),
+            ..._buildTeamFormation(
+              players: awayStarting,
+              formationStr: awayComp['lineups']?['formation'] ?? '4-3-3',
+              isHome: false,
+              shirtColor: const Color(0xFFE11D48),
+            ),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildTeamNodes({required List<dynamic> players, required bool isHome, required Color shirtColor}) {
-    int maxRow = 1;
-    final Map<int, int> maxColInRow = {};
+  List<Widget> _buildTeamFormation({
+    required List<dynamic> players,
+    required String formationStr,
+    required bool isHome,
+    required Color shirtColor,
+  }) {
+    if (players.isEmpty) return [];
 
-    for (var item in players) {
-      final String? grid = item['player']['grid'];
-      if (grid != null && grid.contains(':')) {
-        final parts = grid.split(':');
-        final int r = int.tryParse(parts[0]) ?? 1;
-        final int c = int.tryParse(parts[1]) ?? 1;
-        if (r > maxRow) maxRow = r;
-        if (c > (maxColInRow[r] ?? 0)) maxColInRow[r] = c;
-      }
+    // تقسيم التشكيل مثل "4-2-3-1" إلى صفوف: [1 (حارس), 4, 2, 3, 1]
+    final List<int> rowsCounts = [1];
+    for (var part in formationStr.split('-')) {
+      final int? count = int.tryParse(part.trim());
+      if (count != null && count > 0) rowsCounts.add(count);
     }
+    if (rowsCounts.length == 1) rowsCounts.addAll([4, 4, 2]);
 
     List<Widget> widgets = [];
-    for (var i = 0; i < players.length; i++) {
-      final player = players[i]['player'];
-      final String? grid = player['grid'];
-      int row = 1, col = 1;
+    int playerIdx = 0;
+    final int totalRows = rowsCounts.length;
 
-      if (grid != null && grid.contains(':')) {
-        final parts = grid.split(':');
-        row = int.tryParse(parts[0]) ?? 1;
-        col = int.tryParse(parts[1]) ?? 1;
-      } else {
-        if (i == 0) { row = 1; col = 1; }
-        else if (i <= 4) { row = 2; col = i; maxColInRow[2] = 4; }
-        else if (i <= 8) { row = 3; col = i - 4; maxColInRow[3] = 4; }
-        else { row = 4; col = i - 8; maxColInRow[4] = 2; }
-        maxRow = 4;
-      }
+    for (int r = 0; r < totalRows; r++) {
+      final int colsInThisRow = rowsCounts[r];
+      for (int c = 0; c < colsInThisRow; c++) {
+        if (playerIdx >= players.length) break;
+        final p = players[playerIdx++];
 
-      final int totalCols = maxColInRow[row] ?? 1;
-      double xAlign = 0.0;
-      if (totalCols > 1) {
-        double normalizedX = (col - 1) / (totalCols - 1);
-        if (!isHome) normalizedX = 1.0 - normalizedX;
-        xAlign = -0.78 + (normalizedX * 1.56);
-      }
+        double xAlign = 0.0;
+        if (colsInThisRow > 1) {
+          double normX = c / (colsInThisRow - 1);
+          if (!isHome) normX = 1.0 - normX;
+          xAlign = -0.78 + (normX * 1.56);
+        }
 
-      double normalizedY = maxRow > 1 ? (row - 1) / (maxRow - 1) : 0.0;
-      double yAlign = isHome ? -0.91 + (normalizedY * 0.77) : 0.91 - (normalizedY * 0.77);
+        double normY = totalRows > 1 ? r / (totalRows - 1) : 0.0;
+        double yAlign = isHome ? -0.90 + (normY * 0.76) : 0.90 - (normY * 0.76);
 
-      final String fullName = player['name'] ?? '';
-      final String shortName = fullName.split(' ').last;
+        final String name = p['athlete']?['name'] ?? p['name'] ?? '';
+        final String jersey = '${p['jerseyNumber'] ?? p['formation']?['number'] ?? ''}';
 
-      widgets.add(
-        Align(
-          alignment: Alignment(xAlign, yAlign),
-          child: SizedBox(
-            width: 66,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: row == 1 ? Colors.amber.shade700 : shirtColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.8),
+        widgets.add(
+          Align(
+            alignment: Alignment(xAlign, yAlign),
+            child: SizedBox(
+              width: 68,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: r == 0 ? Colors.amber.shade700 : shirtColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.8),
+                    ),
+                    child: Text(jersey, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
-                  child: Text('${player['number'] ?? 0}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                  child: Text(shortName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, color: Colors.white)),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 9.5, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
+        );
+      }
     }
     return widgets;
   }
@@ -677,7 +664,7 @@ class PitchPainter extends CustomPainter {
 }
 ''')
 
-    # 10. share_card_helper.dart
+    # 10. أداة مشاركة البطاقات على واتساب
     write_file("lib/widgets/share_card_helper.dart", r'''
 import 'dart:io';
 import 'dart:typed_data';
@@ -733,7 +720,7 @@ class ShareableMatchWidgetState extends State<ShareableMatchWidget> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('تطبيق الكرة المصرية 🇪🇬⚽', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                  Text('تابع فريقك لحظة بلحظة 📲', style: TextStyle(fontSize: 10, color: Color(0xFF38BDF8))),
+                  Text('مباشر لحظة بلحظة 📲', style: TextStyle(fontSize: 10, color: Color(0xFF38BDF8))),
                 ],
               ),
             ),
@@ -745,12 +732,11 @@ class ShareableMatchWidgetState extends State<ShareableMatchWidget> {
 }
 ''')
 
-    # 11. matches_tab.dart
+    # 11. شاشة المباريات (تسحب من 365Scores مباشرة بالعربية)
     write_file("lib/screens/matches_tab.dart", r'''
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
 import '../core/smart_api_cache.dart';
-import '../core/notification_service.dart';
 import '../models/favorite_team.dart';
 import '../widgets/favorite_team_banner.dart';
 import '../widgets/match_card.dart';
@@ -765,7 +751,7 @@ class CachedMatchesTab extends StatefulWidget {
 class _CachedMatchesTabState extends State<CachedMatchesTab> {
   DateTime selectedDate = DateTime.now();
   bool isLoading = false;
-  List<dynamic> filteredMatches = [];
+  List<dynamic> matches = [];
   FavoriteTeam? favoriteTeam;
 
   @override
@@ -779,33 +765,26 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
     await loadMatches();
   }
 
-  String formatDate(DateTime date) =>
-      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  // صيغة التاريخ المطلوبة لـ 365Scores هي DD/MM/YYYY
+  String format365Date(DateTime d) =>
+      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
+
+  String formatDisplayDate(DateTime d) =>
+      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
   Future<void> loadMatches({bool forceRefresh = false}) async {
     setState(() => isLoading = true);
-    final String dateStr = formatDate(selectedDate);
+    final String dateParam = format365Date(selectedDate);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'matches_$dateStr',
-        url: 'https://v3.football.api-sports.io/fixtures?date=$dateStr&timezone=Africa/Cairo',
-        ttl: const Duration(minutes: 15),
+        cacheKey: '365_matches_${formatDisplayDate(selectedDate)}',
+        url: 'https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=${AppConstants.egyptCompetitions}&startDate=$dateParam&endDate=$dateParam',
+        ttl: const Duration(minutes: 2),
         forceRefresh: forceRefresh,
       );
-      final List<dynamic> allMatches = data['response'] ?? [];
-      final List<dynamic> egyptMatches = allMatches.where((match) {
-        final int leagueId = match['league']['id'];
-        final String country = match['league']['country'] ?? '';
-        final int homeId = match['teams']['home']['id'];
-        final int awayId = match['teams']['away']['id'];
-        return country == 'Egypt' ||
-            AppConstants.egyptianLeagueIds.contains(leagueId) ||
-            AppConstants.egyptianTeamIds.contains(homeId) ||
-            AppConstants.egyptianTeamIds.contains(awayId);
-      }).toList();
 
       setState(() {
-        filteredMatches = egyptMatches;
+        matches = data['games'] ?? [];
         isLoading = false;
       });
     } catch (_) {
@@ -823,18 +802,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
         },
       ),
     );
-  }
-
-  void _toggleNotifications() async {
-    if (favoriteTeam != null) {
-      setState(() {
-        favoriteTeam!.notificationsEnabled = !favoriteTeam!.notificationsEnabled;
-      });
-      await FavoriteTeamManager.saveFavorite(favoriteTeam!);
-      if (!favoriteTeam!.notificationsEnabled) {
-        await NotificationService.cancelAllReminders();
-      }
-    }
   }
 
   @override
@@ -866,7 +833,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
                   },
                   icon: const Icon(Icons.arrow_back_ios, size: 18),
                 ),
-                Text(formatDate(selectedDate),
+                Text(formatDisplayDate(selectedDate),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                 IconButton(
                   onPressed: () {
@@ -880,20 +847,18 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
           ),
           FavoriteTeamBanner(
             favoriteTeam: favoriteTeam,
-            allMatches: filteredMatches,
+            allMatches: matches,
             onSelectTeamClicked: _openTeamSelector,
-            onToggleNotifications: _toggleNotifications,
-            translateName: AppConstants.translate,
           ),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : filteredMatches.isEmpty
-                    ? const Center(child: Text('لا توجد مباريات للفرق المصرية في هذا اليوم', style: TextStyle(color: Colors.white54)))
+                : matches.isEmpty
+                    ? const Center(child: Text('لا توجد مباريات مسجلة في هذا اليوم', style: TextStyle(color: Colors.white54)))
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: filteredMatches.length,
-                        itemBuilder: (context, index) => MatchCard(match: filteredMatches[index]),
+                        itemCount: matches.length,
+                        itemBuilder: (context, index) => MatchCard(match: matches[index]),
                       ),
           ),
         ],
@@ -903,7 +868,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
 }
 ''')
 
-    # 12. match_details_screen.dart
+    # 12. شاشة تفاصيل المباراة الكاملة من 365Scores
     write_file("lib/screens/match_details_screen.dart", r'''
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
@@ -912,8 +877,8 @@ import '../widgets/soccer_pitch_widget.dart';
 import '../widgets/share_card_helper.dart';
 
 class MatchDetailsScreen extends StatefulWidget {
-  final int fixtureId;
-  const MatchDetailsScreen({super.key, required this.fixtureId});
+  final int gameId;
+  const MatchDetailsScreen({super.key, required this.gameId});
 
   @override
   State<MatchDetailsScreen> createState() => _MatchDetailsScreenState();
@@ -921,7 +886,7 @@ class MatchDetailsScreen extends StatefulWidget {
 
 class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   bool isLoading = true;
-  Map<String, dynamic>? matchData;
+  Map<String, dynamic>? gameData;
   final GlobalKey<ShareableMatchWidgetState> _scoreShareKey = GlobalKey();
   final GlobalKey<ShareableMatchWidgetState> _pitchShareKey = GlobalKey();
 
@@ -935,14 +900,13 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'fixture_${widget.fixtureId}',
-        url: 'https://v3.football.api-sports.io/fixtures?id=${widget.fixtureId}',
-        ttl: const Duration(minutes: 5),
+        cacheKey: '365_game_${widget.gameId}',
+        url: 'https://webws.365scores.com/web/game/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&gameId=${widget.gameId}',
+        ttl: const Duration(minutes: 1),
         forceRefresh: forceRefresh,
       );
-      final List<dynamic> list = data['response'] ?? [];
       setState(() {
-        matchData = list.isNotEmpty ? list.first : null;
+        gameData = data['game'];
         isLoading = false;
       });
     } catch (_) {
@@ -957,7 +921,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF1E293B),
-          title: const Text('تفاصيل المباراة', style: TextStyle(fontSize: 17)),
+          title: Text(gameData?['competitionDisplayName'] ?? 'تفاصيل المباراة', style: const TextStyle(fontSize: 16)),
           actions: [
             IconButton(
               icon: const Icon(Icons.share, color: Colors.greenAccent),
@@ -971,13 +935,13 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
           bottom: const TabBar(
             indicatorColor: Color(0xFF38BDF8),
             tabs: [
-              Tab(text: 'المجريات ⏱️'),
+              Tab(text: 'الأحداث ⏱️'),
               Tab(text: 'التشكيل 👕'),
               Tab(text: 'الإحصائيات 📊'),
             ],
           ),
         ),
-        body: isLoading || matchData == null
+        body: isLoading || gameData == null
             ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
             : Column(
                 children: [
@@ -1002,57 +966,82 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   }
 
   Widget _buildHeader() {
-    final home = matchData!['teams']['home'];
-    final away = matchData!['teams']['away'];
-    final goals = matchData!['goals'];
+    final home = gameData!['homeCompetitor'] ?? {};
+    final away = gameData!['awayCompetitor'] ?? {};
+    final int hScore = (home['score'] ?? -1).toInt();
+    final int aScore = (away['score'] ?? -1).toInt();
+    final String tvNetwork = (gameData!['tvNetworks'] as List?)?.isNotEmpty == true
+        ? gameData!['tvNetworks'][0]['name'] ?? ''
+        : '';
+
     return Container(
       padding: const EdgeInsets.all(16),
       color: const Color(0xFF1E293B),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              children: [
-                Image.network(home['logo'], width: 48, height: 48),
-                const SizedBox(height: 6),
-                Text(AppConstants.translate(home['name']),
-                    textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Image.network(AppConstants.teamLogo(home['id'] ?? 0), width: 48, height: 48,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 44)),
+                    const SizedBox(height: 6),
+                    Text(home['name'] ?? '', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              Column(
+                children: [
+                  Text(hScore >= 0 ? '$hScore : $aScore' : 'VS',
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(gameData!['statusText'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF38BDF8))),
+                ],
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Image.network(AppConstants.teamLogo(away['id'] ?? 0), width: 48, height: 48,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 44)),
+                    const SizedBox(height: 6),
+                    Text(away['name'] ?? '', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Text('${goals['home'] ?? '-'} : ${goals['away'] ?? '-'}',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-          Expanded(
-            child: Column(
-              children: [
-                Image.network(away['logo'], width: 48, height: 48),
-                const SizedBox(height: 6),
-                Text(AppConstants.translate(away['name']),
-                    textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
+          if (tvNetwork.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('📺 القناة الناقلة: $tvNetwork', style: const TextStyle(fontSize: 11, color: Colors.amber)),
+          ]
         ],
       ),
     );
   }
 
   Widget _buildEventsTab() {
-    final List<dynamic> events = matchData!['events'] ?? [];
-    if (events.isEmpty) return const Center(child: Text('لا توجد أحداث مسجلة بعد'));
+    final List<dynamic> events = gameData!['events'] ?? [];
+    if (events.isEmpty) return const Center(child: Text('لا توجد أحداث مسجلة في هذه المباراة بعد'));
+
+    final Map<int, String> membersMap = {};
+    for (var m in (gameData!['members'] ?? [])) {
+      membersMap[m['id']] = m['name'] ?? '';
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: events.length,
       itemBuilder: (context, index) {
         final e = events[index];
-        final String type = e['type'] ?? '';
-        final String icon = type == 'Goal' ? '⚽' : (type == 'Card' ? '🟨' : (type == 'subst' ? '🔄' : '📌'));
+        final String playerName = membersMap[e['playerId']] ?? '';
+        final String eventType = e['eventType']?['name'] ?? '';
+        final String timeStr = '${e['gameTimeDisplay'] ?? e['gameTime'] ?? ''}\'';
+
         return Card(
           child: ListTile(
-            leading: Text("${e['time']['elapsed']}'",
-                style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
-            title: Text('$icon ${e['player']['name'] ?? ''}'),
-            subtitle: Text(AppConstants.translate(e['team']['name'] ?? '')),
+            leading: Text(timeStr, style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+            title: Text('$eventType - $playerName', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         );
       },
@@ -1060,8 +1049,14 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   }
 
   Widget _buildLineupsTab() {
-    final List<dynamic> lineups = matchData!['lineups'] ?? [];
-    if (lineups.length < 2) return const Center(child: Text('يصدر التشكيل الرسمي قبل المباراة بـ 45 دقيقة'));
+    final home = gameData!['homeCompetitor'] ?? {};
+    final away = gameData!['awayCompetitor'] ?? {};
+    final bool hasLineup = home['lineups']?['members'] != null;
+
+    if (!hasLineup) {
+      return const Center(child: Text('التشكيل الرسمي لم يصدر بعد'));
+    }
+
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -1073,29 +1068,29 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         ShareableMatchWidget(
           key: _pitchShareKey,
           shareText: 'التشكيل الرسمي للمباراة 🇪🇬📋',
-          child: SoccerPitchWidget(homeLineup: lineups[0], awayLineup: lineups[1]),
+          child: SoccerPitchWidget(homeComp: home, awayComp: away),
         ),
       ],
     );
   }
 
   Widget _buildStatsTab() {
-    final List<dynamic> stats = matchData!['statistics'] ?? [];
-    if (stats.length < 2) return const Center(child: Text('لا تتوفر إحصائيات حالياً'));
-    final List<dynamic> homeStats = stats[0]['statistics'] ?? [];
-    final List<dynamic> awayStats = stats[1]['statistics'] ?? [];
+    final List<dynamic> stats = gameData!['statistics'] ?? [];
+    if (stats.isEmpty) return const Center(child: Text('لا تتوفر إحصائيات لهذه المباراة حالياً'));
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: homeStats.length,
+      itemCount: stats.length,
       itemBuilder: (context, index) {
+        final s = stats[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 14),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${homeStats[index]['value'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('${homeStats[index]['type']}', style: const TextStyle(color: Colors.white60)),
-              Text('${awayStats[index]['value'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('${s['homeValue'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+              Text('${s['name'] ?? ''}', style: const TextStyle(color: Colors.white70)),
+              Text('${s['awayValue'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
             ],
           ),
         );
@@ -1105,7 +1100,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
 }
 ''')
 
-    # 13. standings_tab.dart
+    # 13. شاشة جدول الترتيب والمجموعات المعربة بالكامل من 365Scores
     write_file("lib/screens/standings_tab.dart", r'''
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
@@ -1119,10 +1114,9 @@ class CachedStandingsTab extends StatefulWidget {
 }
 
 class _CachedStandingsTabState extends State<CachedStandingsTab> {
-  int selectedLeagueId = 233;
-  int selectedSeason = 2025;
+  int selectedCompId = 552; // 552 = الدوري المصري الممتاز
   bool isLoading = false;
-  List<dynamic> groups = [];
+  List<dynamic> rows = [];
 
   @override
   void initState() {
@@ -1134,14 +1128,14 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'standings_${selectedLeagueId}_$selectedSeason',
-        url: 'https://v3.football.api-sports.io/standings?league=$selectedLeagueId&season=$selectedSeason',
-        ttl: const Duration(hours: 6),
+        cacheKey: '365_standings_$selectedCompId',
+        url: 'https://webws.365scores.com/web/standings/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
+        ttl: const Duration(hours: 1),
         forceRefresh: forceRefresh,
       );
-      final List<dynamic> res = data['response'] ?? [];
+      final List<dynamic> standingsList = data['standings'] ?? [];
       setState(() {
-        groups = res.isNotEmpty ? (res.first['league']['standings'] ?? []) : [];
+        rows = standingsList.isNotEmpty ? (standingsList.first['rows'] ?? []) : [];
         isLoading = false;
       });
     } catch (_) {
@@ -1154,7 +1148,7 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('جدول الترتيب والمجموعات 🏆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('جدول الترتيب 🏆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -1171,42 +1165,48 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildChip(233, 'الدوري المصري'),
-                _buildChip(12, 'أبطال أفريقيا'),
-                _buildChip(20, 'الكونفدرالية'),
+                _buildChip(552, 'الدوري المصري'),
+                _buildChip(572, 'أبطال أفريقيا'),
+                _buildChip(573, 'الكونفدرالية'),
               ],
             ),
           ),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : groups.isEmpty
+                : rows.isEmpty
                     ? const Center(child: Text('لا توجد جداول متاحة حالياً'))
                     : ListView.builder(
                         padding: const EdgeInsets.all(12),
-                        itemCount: groups.length,
-                        itemBuilder: (context, gIndex) {
-                          final List<dynamic> table = groups[gIndex];
+                        itemCount: rows.length,
+                        itemBuilder: (context, index) {
+                          final r = rows[index];
+                          final comp = r['competitor'] ?? {};
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: Column(
-                              children: table.map((row) {
-                                return ListTile(
-                                  dense: true,
-                                  leading: Text('${row['rank']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  title: Row(
-                                    children: [
-                                      Image.network(row['team']['logo'], width: 22, height: 22),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: Text(AppConstants.translate(row['team']['name']))),
-                                    ],
+                            margin: const EdgeInsets.only(bottom: 6),
+                            child: ListTile(
+                              dense: true,
+                              leading: Text('${r['position'] ?? (index + 1)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              title: Row(
+                                children: [
+                                  Image.network(
+                                    AppConstants.teamLogo(comp['id'] ?? 0),
+                                    width: 24,
+                                    height: 24,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 20),
                                   ),
-                                  trailing: Text(
-                                    '${row['points']} نقطة (لعب ${row['all']['played']})',
-                                    style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(comp['name'] ?? '',
+                                        style: const TextStyle(fontWeight: FontWeight.bold)),
                                   ),
-                                );
-                              }).toList(),
+                                ],
+                              ),
+                              trailing: Text(
+                                '${(r['points'] ?? 0).toInt()} نقطة (لعب ${(r['gamePlayed'] ?? 0).toInt()})',
+                                style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                              ),
                             ),
                           );
                         },
@@ -1218,14 +1218,14 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
   }
 
   Widget _buildChip(int id, String label) {
-    final bool active = selectedLeagueId == id;
+    final bool active = selectedCompId == id;
     return ChoiceChip(
       label: Text(label),
       selected: active,
       selectedColor: const Color(0xFF38BDF8),
       labelStyle: TextStyle(color: active ? Colors.black : Colors.white, fontSize: 12),
       onSelected: (_) {
-        setState(() => selectedLeagueId = id);
+        setState(() => selectedCompId = id);
         loadStandings();
       },
     );
@@ -1233,7 +1233,7 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
 }
 ''')
 
-    # 14. scorers_tab.dart
+    # 14. شاشة الهدافين المعربة من 365Scores
     write_file("lib/screens/scorers_tab.dart", r'''
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
@@ -1247,8 +1247,7 @@ class CachedScorersTab extends StatefulWidget {
 }
 
 class _CachedScorersTabState extends State<CachedScorersTab> {
-  int selectedLeagueId = 233;
-  int selectedSeason = 2025;
+  int selectedCompId = 552;
   bool isLoading = false;
   List<dynamic> scorers = [];
 
@@ -1262,13 +1261,15 @@ class _CachedScorersTabState extends State<CachedScorersTab> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'scorers_${selectedLeagueId}_$selectedSeason',
-        url: 'https://v3.football.api-sports.io/players/topscorers?league=$selectedLeagueId&season=$selectedSeason',
-        ttl: const Duration(hours: 6),
+        cacheKey: '365_scorers_$selectedCompId',
+        url: 'https://webws.365scores.com/web/stats/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
+        ttl: const Duration(hours: 2),
         forceRefresh: forceRefresh,
       );
+
+      final List<dynamic> athletesStats = data['stats']?['athletesStats'] ?? [];
       setState(() {
-        scorers = data['response'] ?? [];
+        scorers = athletesStats.isNotEmpty ? (athletesStats.first['rows'] ?? []) : [];
         isLoading = false;
       });
     } catch (_) {
@@ -1290,41 +1291,76 @@ class _CachedScorersTabState extends State<CachedScorersTab> {
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-          : scorers.isEmpty
-              ? const Center(child: Text('لا توجد بيانات هدافين متاحة'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: scorers.length,
-                  itemBuilder: (context, index) {
-                    final item = scorers[index];
-                    final player = item['player'];
-                    final stats = (item['statistics'] as List).first;
-                    final goals = stats['goals']['total'] ?? 0;
+      body: Column(
+        children: [
+          Container(
+            color: const Color(0xFF1E293B),
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildChip(552, 'الدوري المصري'),
+                _buildChip(572, 'أبطال أفريقيا'),
+                _buildChip(573, 'الكونفدرالية'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                : scorers.isEmpty
+                    ? const Center(child: Text('لا توجد إحصائيات هدافين متاحة حالياً'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: scorers.length,
+                        itemBuilder: (context, index) {
+                          final item = scorers[index];
+                          final entity = item['entity'] ?? {};
+                          final comp = item['competitor'] ?? {};
+                          final goals = (item['stats'] as List?)?.isNotEmpty == true
+                              ? item['stats'][0]['value']
+                              : '0';
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(player['photo'] ?? ''),
-                        ),
-                        title: Text(player['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(AppConstants.translate(stats['team']['name'])),
-                        trailing: Text(
-                          '$goals هدف',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
-                        ),
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF0F172A),
+                                backgroundImage: NetworkImage(AppConstants.playerPhoto(entity['id'] ?? 0)),
+                              ),
+                              title: Text(entity['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(comp['name'] ?? ''),
+                              trailing: Text(
+                                '$goals هدف',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip(int id, String label) {
+    final bool active = selectedCompId == id;
+    return ChoiceChip(
+      label: Text(label),
+      selected: active,
+      selectedColor: const Color(0xFF38BDF8),
+      labelStyle: TextStyle(color: active ? Colors.black : Colors.white, fontSize: 12),
+      onSelected: (_) {
+        setState(() => selectedCompId = id);
+        loadScorers();
+      },
     );
   }
 }
 ''')
 
-    # 15. main.dart
+    # 15. النقطة الرئيسية للتطبيق
     write_file("lib/main.dart", r'''
 import 'package:flutter/material.dart';
 import 'core/notification_service.dart';
@@ -1344,7 +1380,7 @@ class EgyptianFootballApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'الكرة المصرية',
+      title: 'الكرة المصرية 365',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0F172A),
@@ -1395,7 +1431,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 }
 ''')
 
-    print("\n🎉 تم إنشاء جميع الملفات بنجاح تام بدون أي أخطاء!")
+    print("\n🎉 تم تحويل المشروع بالكامل إلى محرك 365Scores المعرب والمجاني بلا حدود!")
 
 if __name__ == "__main__":
     build()

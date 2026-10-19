@@ -52,7 +52,7 @@ class ShareableMatchWidgetState extends State<ShareableMatchWidget> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('تطبيق الكرة المصرية 🇪🇬⚽', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                  Text('تابع فريقك لحظة بلحظة 📲', style: TextStyle(fontSize: 10, color: Color(0xFF38BDF8))),
+                  Text('مباشر لحظة بلحظة 📲', style: TextStyle(fontSize: 10, color: Color(0xFF38BDF8))),
                 ],
               ),
             ),

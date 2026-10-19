@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
 import '../core/smart_api_cache.dart';
-import '../core/notification_service.dart';
 import '../models/favorite_team.dart';
 import '../widgets/favorite_team_banner.dart';
 import '../widgets/match_card.dart';
@@ -16,7 +15,7 @@ class CachedMatchesTab extends StatefulWidget {
 class _CachedMatchesTabState extends State<CachedMatchesTab> {
   DateTime selectedDate = DateTime.now();
   bool isLoading = false;
-  List<dynamic> filteredMatches = [];
+  List<dynamic> matches = [];
   FavoriteTeam? favoriteTeam;
 
   @override
@@ -30,33 +29,26 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
     await loadMatches();
   }
 
-  String formatDate(DateTime date) =>
-      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  // صيغة التاريخ المطلوبة لـ 365Scores هي DD/MM/YYYY
+  String format365Date(DateTime d) =>
+      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
+
+  String formatDisplayDate(DateTime d) =>
+      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
   Future<void> loadMatches({bool forceRefresh = false}) async {
     setState(() => isLoading = true);
-    final String dateStr = formatDate(selectedDate);
+    final String dateParam = format365Date(selectedDate);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'matches_$dateStr',
-        url: 'https://v3.football.api-sports.io/fixtures?date=$dateStr&timezone=Africa/Cairo',
-        ttl: const Duration(minutes: 15),
+        cacheKey: '365_matches_${formatDisplayDate(selectedDate)}',
+        url: 'https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=${AppConstants.egyptCompetitions}&startDate=$dateParam&endDate=$dateParam',
+        ttl: const Duration(minutes: 2),
         forceRefresh: forceRefresh,
       );
-      final List<dynamic> allMatches = data['response'] ?? [];
-      final List<dynamic> egyptMatches = allMatches.where((match) {
-        final int leagueId = match['league']['id'];
-        final String country = match['league']['country'] ?? '';
-        final int homeId = match['teams']['home']['id'];
-        final int awayId = match['teams']['away']['id'];
-        return country == 'Egypt' ||
-            AppConstants.egyptianLeagueIds.contains(leagueId) ||
-            AppConstants.egyptianTeamIds.contains(homeId) ||
-            AppConstants.egyptianTeamIds.contains(awayId);
-      }).toList();
 
       setState(() {
-        filteredMatches = egyptMatches;
+        matches = data['games'] ?? [];
         isLoading = false;
       });
     } catch (_) {
@@ -74,18 +66,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
         },
       ),
     );
-  }
-
-  void _toggleNotifications() async {
-    if (favoriteTeam != null) {
-      setState(() {
-        favoriteTeam!.notificationsEnabled = !favoriteTeam!.notificationsEnabled;
-      });
-      await FavoriteTeamManager.saveFavorite(favoriteTeam!);
-      if (!favoriteTeam!.notificationsEnabled) {
-        await NotificationService.cancelAllReminders();
-      }
-    }
   }
 
   @override
@@ -117,7 +97,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
                   },
                   icon: const Icon(Icons.arrow_back_ios, size: 18),
                 ),
-                Text(formatDate(selectedDate),
+                Text(formatDisplayDate(selectedDate),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                 IconButton(
                   onPressed: () {
@@ -131,20 +111,18 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
           ),
           FavoriteTeamBanner(
             favoriteTeam: favoriteTeam,
-            allMatches: filteredMatches,
+            allMatches: matches,
             onSelectTeamClicked: _openTeamSelector,
-            onToggleNotifications: _toggleNotifications,
-            translateName: AppConstants.translate,
           ),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : filteredMatches.isEmpty
-                    ? const Center(child: Text('لا توجد مباريات للفرق المصرية في هذا اليوم', style: TextStyle(color: Colors.white54)))
+                : matches.isEmpty
+                    ? const Center(child: Text('لا توجد مباريات مسجلة في هذا اليوم', style: TextStyle(color: Colors.white54)))
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: filteredMatches.length,
-                        itemBuilder: (context, index) => MatchCard(match: filteredMatches[index]),
+                        itemCount: matches.length,
+                        itemBuilder: (context, index) => MatchCard(match: matches[index]),
                       ),
           ),
         ],

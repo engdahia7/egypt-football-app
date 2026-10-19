@@ -10,10 +10,9 @@ class CachedStandingsTab extends StatefulWidget {
 }
 
 class _CachedStandingsTabState extends State<CachedStandingsTab> {
-  int selectedLeagueId = 233;
-  int selectedSeason = 2025;
+  int selectedCompId = 552; // 552 = الدوري المصري الممتاز
   bool isLoading = false;
-  List<dynamic> groups = [];
+  List<dynamic> rows = [];
 
   @override
   void initState() {
@@ -25,14 +24,14 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: 'standings_${selectedLeagueId}_$selectedSeason',
-        url: 'https://v3.football.api-sports.io/standings?league=$selectedLeagueId&season=$selectedSeason',
-        ttl: const Duration(hours: 6),
+        cacheKey: '365_standings_$selectedCompId',
+        url: 'https://webws.365scores.com/web/standings/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
+        ttl: const Duration(hours: 1),
         forceRefresh: forceRefresh,
       );
-      final List<dynamic> res = data['response'] ?? [];
+      final List<dynamic> standingsList = data['standings'] ?? [];
       setState(() {
-        groups = res.isNotEmpty ? (res.first['league']['standings'] ?? []) : [];
+        rows = standingsList.isNotEmpty ? (standingsList.first['rows'] ?? []) : [];
         isLoading = false;
       });
     } catch (_) {
@@ -45,7 +44,7 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('جدول الترتيب والمجموعات 🏆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('جدول الترتيب 🏆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -62,42 +61,48 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildChip(233, 'الدوري المصري'),
-                _buildChip(12, 'أبطال أفريقيا'),
-                _buildChip(20, 'الكونفدرالية'),
+                _buildChip(552, 'الدوري المصري'),
+                _buildChip(572, 'أبطال أفريقيا'),
+                _buildChip(573, 'الكونفدرالية'),
               ],
             ),
           ),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : groups.isEmpty
+                : rows.isEmpty
                     ? const Center(child: Text('لا توجد جداول متاحة حالياً'))
                     : ListView.builder(
                         padding: const EdgeInsets.all(12),
-                        itemCount: groups.length,
-                        itemBuilder: (context, gIndex) {
-                          final List<dynamic> table = groups[gIndex];
+                        itemCount: rows.length,
+                        itemBuilder: (context, index) {
+                          final r = rows[index];
+                          final comp = r['competitor'] ?? {};
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: Column(
-                              children: table.map((row) {
-                                return ListTile(
-                                  dense: true,
-                                  leading: Text('${row['rank']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  title: Row(
-                                    children: [
-                                      Image.network(row['team']['logo'], width: 22, height: 22),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: Text(AppConstants.translate(row['team']['name']))),
-                                    ],
+                            margin: const EdgeInsets.only(bottom: 6),
+                            child: ListTile(
+                              dense: true,
+                              leading: Text('${r['position'] ?? (index + 1)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              title: Row(
+                                children: [
+                                  Image.network(
+                                    AppConstants.teamLogo(comp['id'] ?? 0),
+                                    width: 24,
+                                    height: 24,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 20),
                                   ),
-                                  trailing: Text(
-                                    '${row['points']} نقطة (لعب ${row['all']['played']})',
-                                    style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(comp['name'] ?? '',
+                                        style: const TextStyle(fontWeight: FontWeight.bold)),
                                   ),
-                                );
-                              }).toList(),
+                                ],
+                              ),
+                              trailing: Text(
+                                '${(r['points'] ?? 0).toInt()} نقطة (لعب ${(r['gamePlayed'] ?? 0).toInt()})',
+                                style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                              ),
                             ),
                           );
                         },
@@ -109,14 +114,14 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
   }
 
   Widget _buildChip(int id, String label) {
-    final bool active = selectedLeagueId == id;
+    final bool active = selectedCompId == id;
     return ChoiceChip(
       label: Text(label),
       selected: active,
       selectedColor: const Color(0xFF38BDF8),
       labelStyle: TextStyle(color: active ? Colors.black : Colors.white, fontSize: 12),
       onSelected: (_) {
-        setState(() => selectedLeagueId = id);
+        setState(() => selectedCompId = id);
         loadStandings();
       },
     );

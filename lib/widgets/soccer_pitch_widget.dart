@@ -1,112 +1,123 @@
 import 'package:flutter/material.dart';
 
 class SoccerPitchWidget extends StatelessWidget {
-  final Map<String, dynamic> homeLineup;
-  final Map<String, dynamic> awayLineup;
+  final Map<String, dynamic> homeComp;
+  final Map<String, dynamic> awayComp;
 
-  const SoccerPitchWidget({super.key, required this.homeLineup, required this.awayLineup});
+  const SoccerPitchWidget({super.key, required this.homeComp, required this.awayComp});
 
   @override
   Widget build(BuildContext context) {
-    final List<dynamic> homeXI = homeLineup['startXI'] ?? [];
-    final List<dynamic> awayXI = awayLineup['startXI'] ?? [];
+    final List<dynamic> homeMembers = homeComp['lineups']?['members'] ?? [];
+    final List<dynamic> awayMembers = awayComp['lineups']?['members'] ?? [];
+
+    // status == 1 تعني لاعب أساسي في تشكيل 365Scores
+    final List<dynamic> homeStarting = homeMembers.where((m) => m['status'] == 1).toList();
+    final List<dynamic> awayStarting = awayMembers.where((m) => m['status'] == 1).toList();
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
-      height: 640,
+      height: 620,
       width: double.infinity,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
             Positioned.fill(child: CustomPaint(painter: PitchPainter())),
-            ..._buildTeamNodes(players: homeXI, isHome: true, shirtColor: const Color(0xFF0284C7)),
-            ..._buildTeamNodes(players: awayXI, isHome: false, shirtColor: const Color(0xFFE11D48)),
+            ..._buildTeamFormation(
+              players: homeStarting,
+              formationStr: homeComp['lineups']?['formation'] ?? '4-3-3',
+              isHome: true,
+              shirtColor: const Color(0xFF0284C7),
+            ),
+            ..._buildTeamFormation(
+              players: awayStarting,
+              formationStr: awayComp['lineups']?['formation'] ?? '4-3-3',
+              isHome: false,
+              shirtColor: const Color(0xFFE11D48),
+            ),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildTeamNodes({required List<dynamic> players, required bool isHome, required Color shirtColor}) {
-    int maxRow = 1;
-    final Map<int, int> maxColInRow = {};
+  List<Widget> _buildTeamFormation({
+    required List<dynamic> players,
+    required String formationStr,
+    required bool isHome,
+    required Color shirtColor,
+  }) {
+    if (players.isEmpty) return [];
 
-    for (var item in players) {
-      final String? grid = item['player']['grid'];
-      if (grid != null && grid.contains(':')) {
-        final parts = grid.split(':');
-        final int r = int.tryParse(parts[0]) ?? 1;
-        final int c = int.tryParse(parts[1]) ?? 1;
-        if (r > maxRow) maxRow = r;
-        if (c > (maxColInRow[r] ?? 0)) maxColInRow[r] = c;
-      }
+    // تقسيم التشكيل مثل "4-2-3-1" إلى صفوف: [1 (حارس), 4, 2, 3, 1]
+    final List<int> rowsCounts = [1];
+    for (var part in formationStr.split('-')) {
+      final int? count = int.tryParse(part.trim());
+      if (count != null && count > 0) rowsCounts.add(count);
     }
+    if (rowsCounts.length == 1) rowsCounts.addAll([4, 4, 2]);
 
     List<Widget> widgets = [];
-    for (var i = 0; i < players.length; i++) {
-      final player = players[i]['player'];
-      final String? grid = player['grid'];
-      int row = 1, col = 1;
+    int playerIdx = 0;
+    final int totalRows = rowsCounts.length;
 
-      if (grid != null && grid.contains(':')) {
-        final parts = grid.split(':');
-        row = int.tryParse(parts[0]) ?? 1;
-        col = int.tryParse(parts[1]) ?? 1;
-      } else {
-        if (i == 0) { row = 1; col = 1; }
-        else if (i <= 4) { row = 2; col = i; maxColInRow[2] = 4; }
-        else if (i <= 8) { row = 3; col = i - 4; maxColInRow[3] = 4; }
-        else { row = 4; col = i - 8; maxColInRow[4] = 2; }
-        maxRow = 4;
-      }
+    for (int r = 0; r < totalRows; r++) {
+      final int colsInThisRow = rowsCounts[r];
+      for (int c = 0; c < colsInThisRow; c++) {
+        if (playerIdx >= players.length) break;
+        final p = players[playerIdx++];
 
-      final int totalCols = maxColInRow[row] ?? 1;
-      double xAlign = 0.0;
-      if (totalCols > 1) {
-        double normalizedX = (col - 1) / (totalCols - 1);
-        if (!isHome) normalizedX = 1.0 - normalizedX;
-        xAlign = -0.78 + (normalizedX * 1.56);
-      }
+        double xAlign = 0.0;
+        if (colsInThisRow > 1) {
+          double normX = c / (colsInThisRow - 1);
+          if (!isHome) normX = 1.0 - normX;
+          xAlign = -0.78 + (normX * 1.56);
+        }
 
-      double normalizedY = maxRow > 1 ? (row - 1) / (maxRow - 1) : 0.0;
-      double yAlign = isHome ? -0.91 + (normalizedY * 0.77) : 0.91 - (normalizedY * 0.77);
+        double normY = totalRows > 1 ? r / (totalRows - 1) : 0.0;
+        double yAlign = isHome ? -0.90 + (normY * 0.76) : 0.90 - (normY * 0.76);
 
-      final String fullName = player['name'] ?? '';
-      final String shortName = fullName.split(' ').last;
+        final String name = p['athlete']?['name'] ?? p['name'] ?? '';
+        final String jersey = '${p['jerseyNumber'] ?? p['formation']?['number'] ?? ''}';
 
-      widgets.add(
-        Align(
-          alignment: Alignment(xAlign, yAlign),
-          child: SizedBox(
-            width: 66,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: row == 1 ? Colors.amber.shade700 : shirtColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.8),
+        widgets.add(
+          Align(
+            alignment: Alignment(xAlign, yAlign),
+            child: SizedBox(
+              width: 68,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: r == 0 ? Colors.amber.shade700 : shirtColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.8),
+                    ),
+                    child: Text(jersey, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
-                  child: Text('${player['number'] ?? 0}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                  child: Text(shortName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, color: Colors.white)),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 9.5, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
+        );
+      }
     }
     return widgets;
   }

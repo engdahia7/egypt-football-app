@@ -1,28 +1,15 @@
 class AppConstants {
-  static final Set<int> egyptianLeagueIds = {233, 714, 539, 895};
-  static final Set<int> egyptianTeamIds = {
-    1023, 1040, 1032, 1029, 1030, 1028, 1036, 1039, 1025, 1037, 1041, 1042, 1026, 1570
-  };
-  static final Map<String, String> arabicNames = {
-    'Al Ahly': 'الأهلي',
-    'Zamalek SC': 'الزمالك',
-    'Pyramids FC': 'بيراميدز',
-    'Al Masry': 'المصري البورسعيدي',
-    'Al Ittihad': 'الاتحاد السكندري',
-    'Ismaily SC': 'الإسماعيلي',
-    'Modern Sport': 'مودرن سبورت',
-    'Ceramica Cleopatra': 'سيراميكا كليوباترا',
-    'Enppi': 'إنبي',
-    'Smouha SC': 'سموحة',
-    "Tala'ea El Gaish": 'طلائع الجيش',
-    'ZED FC': 'زد إف سي',
-    'Ghazl El Mahallah': 'غزل المحلة',
-    'Egypt': 'منتخب مصر',
-    'Premier League': 'الدوري المصري الممتاز',
-    'Egypt Cup': 'كأس مصر',
-    'CAF Champions League': 'دوري أبطال أفريقيا',
-    'CAF Confederation Cup': 'كأس الكونفدرالية الأفريقية',
-    'CAF Super Cup': 'السوبر الأفريقي',
-  };
-  static String translate(String name) => arabicNames[name] ?? name;
+  // أكواد البطولات في 365Scores:
+  // 552: الدوري المصري | 553: كأس مصر | 1129: السوبر المصري
+  // 572: دوري أبطال أفريقيا | 573: الكونفدرالية الأفريقية
+  static const String egyptCompetitions = '552,553,1129,572,573';
+
+  static String teamLogo(int teamId) =>
+      'https://imagecache.365scores.com/image/upload/f_png,w_80,h_80,c_limit,q_auto:eco,d_Competitors:default1.png/v1/Competitors/$teamId';
+
+  static String competitionLogo(int compId) =>
+      'https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco,d_Countries:Round:default.png/v1/Competitions/$compId';
+
+  static String playerPhoto(int athleteId) =>
+      'https://imagecache.365scores.com/image/upload/f_png,w_80,h_80,c_limit,q_auto:eco,d_Athletes:default.png/v1/Athletes/$athleteId';
 }

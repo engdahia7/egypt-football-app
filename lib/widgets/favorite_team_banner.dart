@@ -5,16 +5,12 @@ class FavoriteTeamBanner extends StatelessWidget {
   final FavoriteTeam? favoriteTeam;
   final List<dynamic> allMatches;
   final VoidCallback onSelectTeamClicked;
-  final VoidCallback onToggleNotifications;
-  final String Function(String) translateName;
 
   const FavoriteTeamBanner({
     super.key,
     required this.favoriteTeam,
     required this.allMatches,
     required this.onSelectTeamClicked,
-    required this.onToggleNotifications,
-    required this.translateName,
   });
 
   @override
@@ -51,9 +47,9 @@ class FavoriteTeamBanner extends StatelessWidget {
 
     dynamic teamMatch;
     for (var m in allMatches) {
-      final int homeId = m['teams']['home']['id'];
-      final int awayId = m['teams']['away']['id'];
-      if (homeId == favoriteTeam!.id || awayId == favoriteTeam!.id) {
+      final String hName = m['homeCompetitor']?['name'] ?? '';
+      final String aName = m['awayCompetitor']?['name'] ?? '';
+      if (hName.contains(favoriteTeam!.name) || aName.contains(favoriteTeam!.name)) {
         teamMatch = m;
         break;
       }
@@ -75,41 +71,27 @@ class FavoriteTeamBanner extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Image.network(favoriteTeam!.logo, width: 24, height: 24),
+                  const Icon(Icons.stars, color: Colors.amber, size: 22),
                   const SizedBox(width: 8),
-                  Text('مباريات ${favoriteTeam!.name}',
+                  Text('فريقي المفضل: ${favoriteTeam!.name}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.amber)),
                 ],
               ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      favoriteTeam!.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
-                      color: favoriteTeam!.notificationsEnabled ? const Color(0xFF38BDF8) : Colors.white54,
-                      size: 20,
-                    ),
-                    onPressed: onToggleNotifications,
-                    constraints: const BoxConstraints(),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  GestureDetector(
-                    onTap: onSelectTeamClicked,
-                    child: const Text('تغيير', style: TextStyle(fontSize: 11, color: Colors.white54)),
-                  ),
-                ],
+              GestureDetector(
+                onTap: onSelectTeamClicked,
+                child: const Text('تغيير الفريق', style: TextStyle(fontSize: 12, color: Color(0xFF38BDF8))),
               ),
             ],
           ),
           const Divider(height: 16, color: Colors.white12),
           teamMatch == null
-              ? const Text('لا توجد مباريات مسجلة لهذا الفريق اليوم 📅',
+              ? const Text('لا توجد مباراة مسجلة لفريقك في هذا التاريخ 📅',
                   style: TextStyle(fontSize: 12, color: Colors.white60))
               : Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(translateName(teamMatch['teams']['home']['name']),
+                      child: Text(teamMatch['homeCompetitor']['name'] ?? '',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     Container(
@@ -119,14 +101,14 @@ class FavoriteTeamBanner extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        teamMatch['fixture']['status']['short'] == 'NS'
-                            ? teamMatch['fixture']['date'].substring(11, 16)
-                            : '${teamMatch['goals']['home'] ?? 0} - ${teamMatch['goals']['away'] ?? 0}',
+                        teamMatch['statusGroup'] == 2
+                            ? (teamMatch['startTime'] ?? '').toString().substring(11, 16)
+                            : '${teamMatch['homeCompetitor']['score'] ?? 0} - ${teamMatch['awayCompetitor']['score'] ?? 0}',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
                       ),
                     ),
                     Expanded(
-                      child: Text(translateName(teamMatch['teams']['away']['name']),
+                      child: Text(teamMatch['awayCompetitor']['name'] ?? '',
                           textAlign: TextAlign.left,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
@@ -142,12 +124,20 @@ class SelectFavoriteTeamDialog extends StatelessWidget {
   final Function(FavoriteTeam) onTeamSelected;
   const SelectFavoriteTeamDialog({super.key, required this.onTeamSelected});
 
-  final List<Map<String, dynamic>> egyptianTeamsList = const [
-    {'id': 1023, 'name': 'الأهلي', 'logo': 'https://media.api-sports.io/football/teams/1023.png'},
-    {'id': 1040, 'name': 'الزمالك', 'logo': 'https://media.api-sports.io/football/teams/1040.png'},
-    {'id': 1032, 'name': 'بيراميدز', 'logo': 'https://media.api-sports.io/football/teams/1032.png'},
-    {'id': 1029, 'name': 'المصري البورسعيدي', 'logo': 'https://media.api-sports.io/football/teams/1029.png'},
-    {'id': 1570, 'name': 'منتخب مصر', 'logo': 'https://media.api-sports.io/football/teams/1570.png'},
+  final List<String> egyptianTeams = const [
+    'الأهلي',
+    'الزمالك',
+    'بيراميدز',
+    'المصري',
+    'الاتحاد السكندري',
+    'الإسماعيلي',
+    'سيراميكا كليوباترا',
+    'مودرن سبورت',
+    'سموحة',
+    'إنبي',
+    'غزل المحلة',
+    'زد',
+    'مصر',
   ];
 
   @override
@@ -159,14 +149,14 @@ class SelectFavoriteTeamDialog extends StatelessWidget {
         width: double.maxFinite,
         child: ListView.builder(
           shrinkWrap: true,
-          itemCount: egyptianTeamsList.length,
+          itemCount: egyptianTeams.length,
           itemBuilder: (context, index) {
-            final t = egyptianTeamsList[index];
+            final name = egyptianTeams[index];
             return ListTile(
-              leading: Image.network(t['logo'], width: 30, height: 30),
-              title: Text(t['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              leading: const Icon(Icons.shield, color: Color(0xFF38BDF8)),
+              title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
               onTap: () {
-                onTeamSelected(FavoriteTeam(id: t['id'], name: t['name'], logo: t['logo']));
+                onTeamSelected(FavoriteTeam(name: name, logo: ''));
                 Navigator.pop(context);
               },
             );

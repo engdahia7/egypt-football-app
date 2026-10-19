@@ -3,8 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SmartApiCache {
-  static const String apiKey = '81a51f1b684ceae4a9006feb5e06232b';
-
   static Future<Map<String, dynamic>> get({
     required String cacheKey,
     required String url,
@@ -12,8 +10,8 @@ class SmartApiCache {
     bool forceRefresh = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final String? cachedJson = prefs.getString('data_$cacheKey');
-    final int? cachedTime = prefs.getInt('time_$cacheKey');
+    final String? cachedJson = prefs.getString('365_data_$cacheKey');
+    final int? cachedTime = prefs.getInt('365_time_$cacheKey');
     final int now = DateTime.now().millisecondsSinceEpoch;
 
     if (!forceRefresh && cachedJson != null && cachedTime != null) {
@@ -26,18 +24,20 @@ class SmartApiCache {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'x-apisports-key': apiKey},
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['errors'] == null || (data['errors'] as dynamic).isEmpty) {
-          await prefs.setString('data_$cacheKey', response.body);
-          await prefs.setInt('time_$cacheKey', now);
-        }
+        final String bodyText = utf8.decode(response.bodyBytes);
+        final Map<String, dynamic> data = json.decode(bodyText);
+        await prefs.setString('365_data_$cacheKey', bodyText);
+        await prefs.setInt('365_time_$cacheKey', now);
         return data;
       } else {
-        throw Exception('Error: ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
       if (cachedJson != null) {
