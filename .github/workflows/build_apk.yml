@@ -1,4 +1,4 @@
-name: Build Compact APK (365Scores Engine)
+name: Build Compact APK
 
 on:
   push:
@@ -28,14 +28,23 @@ jobs:
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
 
+      # تحميل وتثبيت أيقونة كرة قدم عربية مخصصة بدلاً من أيقونة فلاتر
+      - name: Setup Custom App Icon
+        run: |
+          curl -sL "https://cdn-icons-png.flaticon.com/512/53/53283.png" -o icon.png
+          for res in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            mkdir -p android/app/src/main/res/$res
+            cp icon.png android/app/src/main/res/$res/ic_launcher.png
+          done
+
       - name: Get Dependencies
         run: flutter pub get
 
       - name: Build Optimized Split APK
         run: flutter build apk --release --split-per-abi
 
-      - name: Upload Compact APK (arm64-v8a)
+      - name: Upload Compact APK
         uses: actions/upload-artifact@v4
         with:
-          name: Egyptian-Football-Compact-APK
+          name: Egyptian-Football-App-Fix
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk

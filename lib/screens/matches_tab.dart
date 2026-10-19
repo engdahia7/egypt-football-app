@@ -17,6 +17,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
   bool isLoading = false;
   List<dynamic> matches = [];
   FavoriteTeam? favoriteTeam;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -29,7 +30,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
     await loadMatches();
   }
 
-  // صيغة التاريخ المطلوبة لـ 365Scores هي DD/MM/YYYY
   String format365Date(DateTime d) =>
       "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
 
@@ -37,22 +37,35 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
   Future<void> loadMatches({bool forceRefresh = false}) async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
     final String dateParam = format365Date(selectedDate);
+    // رابط محسّن يجلب مباريات اليوم مع تحديد البلد (مصر) والبطولات
+    final String url =
+        'https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&startDate=$dateParam&endDate=$dateParam&competitions=${AppConstants.egyptCompetitions}';
+
     try {
       final data = await SmartApiCache.get(
         cacheKey: '365_matches_${formatDisplayDate(selectedDate)}',
-        url: 'https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=${AppConstants.egyptCompetitions}&startDate=$dateParam&endDate=$dateParam',
+        url: url,
         ttl: const Duration(minutes: 2),
         forceRefresh: forceRefresh,
       );
 
+      final List<dynamic> games = data['games'] ?? [];
+
       setState(() {
-        matches = data['games'] ?? [];
+        matches = games;
         isLoading = false;
       });
-    } catch (_) {
-      setState(() => isLoading = false);
+    } catch (e) {
+      setState(() {
+        errorMessage = 'تعذر تحميل المباريات، تأكد من الاتصال بالإنترنت.';
+        isLoading = false;
+      });
     }
   }
 
@@ -73,17 +86,20 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('مباريات الكرة المصرية 🇪🇬', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('مباريات الكرة المصرية 🇪🇬',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Color(0xFF38BDF8)),
+            tooltip: 'تحديث فوري',
             onPressed: () => loadMatches(forceRefresh: true),
           ),
         ],
       ),
       body: Column(
         children: [
+          // شريط اختيار التاريخ
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             color: const Color(0xFF1E293B),
@@ -92,16 +108,21 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               children: [
                 IconButton(
                   onPressed: () {
-                    setState(() => selectedDate = selectedDate.subtract(const Duration(days: 1)));
+                    setState(() => selectedDate =
+                        selectedDate.subtract(const Duration(days: 1)));
                     loadMatches();
                   },
                   icon: const Icon(Icons.arrow_back_ios, size: 18),
                 ),
                 Text(formatDisplayDate(selectedDate),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF38BDF8))),
                 IconButton(
                   onPressed: () {
-                    setState(() => selectedDate = selectedDate.add(const Duration(days: 1)));
+                    setState(() => selectedDate =
+                        selectedDate.add(const Duration(days: 1)));
                     loadMatches();
                   },
                   icon: const Icon(Icons.arrow_forward_ios, size: 18),
@@ -116,14 +137,51 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
           ),
           Expanded(
             child: isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : matches.isEmpty
-                    ? const Center(child: Text('لا توجد مباريات مسجلة في هذا اليوم', style: TextStyle(color: Colors.white54)))
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: matches.length,
-                        itemBuilder: (context, index) => MatchCard(match: matches[index]),
-                      ),
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                : errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(errorMessage!,
+                                style: const TextStyle(color: Colors.redAccent)),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: () => loadMatches(forceRefresh: true),
+                              child: const Text('إعادة المحاولة'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : matches.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.event_busy,
+                                    size: 48, color: Colors.white38),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'لا توجد مباريات مسجلة لهذا التاريخ 📅',
+                                  style: TextStyle(
+                                      color: Colors.white54, fontSize: 14),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'جرب التبديل لأيام أخرى باستخدام الأسهم في الأعلى',
+                                  style: TextStyle(
+                                      color: Colors.white38, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            itemCount: matches.length,
+                            itemBuilder: (context, index) =>
+                                MatchCard(match: matches[index]),
+                          ),
           ),
         ],
       ),
