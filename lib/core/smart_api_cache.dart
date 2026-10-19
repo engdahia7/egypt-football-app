@@ -25,10 +25,14 @@ class SmartApiCache {
       final response = await http.get(
         Uri.parse(url),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'ar,en-US;q=0.9,en;q=0.8',
+          'Referer': 'https://www.365scores.com/',
+          'Origin': 'https://www.365scores.com',
         },
-      );
+      ).timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
         final String bodyText = utf8.decode(response.bodyBytes);
@@ -37,7 +41,7 @@ class SmartApiCache {
         await prefs.setInt('365_time_$cacheKey', now);
         return data;
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+        throw Exception('Status code: ${response.statusCode}');
       }
     } catch (e) {
       if (cachedJson != null) {

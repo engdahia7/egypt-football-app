@@ -8,10 +8,10 @@ def write_file(path, content):
         f.write(content.strip() + "\n")
     print(f"✅ تم تحديث: {path}")
 
-def update_all():
-    print("🚀 جاري إصلاح الأيقونة ورابط المباريات...")
+def update_fix():
+    print("🚀 جاري إصلاح إذن الاتصال بالإنترنت وترويسات 365Scores...")
 
-    # 1. تحديث سيرفر البناء مع توليد أيقونة مخصصة للتطبيق تلقائياً
+    # 1. تفعيل صلاحيات الإنترنت و cleartextTraffic في AndroidManifest
     write_file(".github/workflows/build_apk.yml", r'''
 name: Build Compact APK
 
@@ -38,12 +38,12 @@ jobs:
       - name: Create Android Platform
         run: flutter create --platforms=android --org com.egyptfootball.app .
 
+      # تفعيل الإنترنت والسماح بمرور حركة البيانات عبر الشبكة
       - name: Add Internet Permission & App Name
         run: |
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/><application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
 
-      # تحميل وتثبيت أيقونة كرة قدم عربية مخصصة بدلاً من أيقونة فلاتر
       - name: Setup Custom App Icon
         run: |
           curl -sL "https://cdn-icons-png.flaticon.com/512/53/53283.png" -o icon.png
@@ -65,201 +65,64 @@ jobs:
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ''')
 
-    # 2. تحديث شاشة المباريات لمعالجة البيانات وعرضها بدقة
-    write_file("lib/screens/matches_tab.dart", r'''
-import 'package:flutter/material.dart';
-import '../core/app_constants.dart';
-import '../core/smart_api_cache.dart';
-import '../models/favorite_team.dart';
-import '../widgets/favorite_team_banner.dart';
-import '../widgets/match_card.dart';
+    # 2. تحسين كود جلب البيانات وإضافة ترويسات متصفح كاملة لمنع الحظر
+    write_file("lib/core/smart_api_cache.dart", r'''
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-class CachedMatchesTab extends StatefulWidget {
-  const CachedMatchesTab({super.key});
+class SmartApiCache {
+  static Future<Map<String, dynamic>> get({
+    required String cacheKey,
+    required String url,
+    required Duration ttl,
+    bool forceRefresh = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? cachedJson = prefs.getString('365_data_$cacheKey');
+    final int? cachedTime = prefs.getInt('365_time_$cacheKey');
+    final int now = DateTime.now().millisecondsSinceEpoch;
 
-  @override
-  State<CachedMatchesTab> createState() => _CachedMatchesTabState();
-}
-
-class _CachedMatchesTabState extends State<CachedMatchesTab> {
-  DateTime selectedDate = DateTime.now();
-  bool isLoading = false;
-  List<dynamic> matches = [];
-  FavoriteTeam? favoriteTeam;
-  String? errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _initData();
-  }
-
-  Future<void> _initData() async {
-    favoriteTeam = await FavoriteTeamManager.getFavorite();
-    await loadMatches();
-  }
-
-  String format365Date(DateTime d) =>
-      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
-
-  String formatDisplayDate(DateTime d) =>
-      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-
-  Future<void> loadMatches({bool forceRefresh = false}) async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-
-    final String dateParam = format365Date(selectedDate);
-    // رابط محسّن يجلب مباريات اليوم مع تحديد البلد (مصر) والبطولات
-    final String url =
-        'https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&startDate=$dateParam&endDate=$dateParam&competitions=${AppConstants.egyptCompetitions}';
+    if (!forceRefresh && cachedJson != null && cachedTime != null) {
+      final int ageInMinutes = ((now - cachedTime) / 60000).round();
+      if (ageInMinutes < ttl.inMinutes) {
+        return json.decode(cachedJson);
+      }
+    }
 
     try {
-      final data = await SmartApiCache.get(
-        cacheKey: '365_matches_${formatDisplayDate(selectedDate)}',
-        url: url,
-        ttl: const Duration(minutes: 2),
-        forceRefresh: forceRefresh,
-      );
-
-      final List<dynamic> games = data['games'] ?? [];
-
-      setState(() {
-        matches = games;
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = 'تعذر تحميل المباريات، تأكد من الاتصال بالإنترنت.';
-        isLoading = false;
-      });
-    }
-  }
-
-  void _openTeamSelector() {
-    showDialog(
-      context: context,
-      builder: (_) => SelectFavoriteTeamDialog(
-        onTeamSelected: (team) async {
-          await FavoriteTeamManager.saveFavorite(team);
-          setState(() => favoriteTeam = team);
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'ar,en-US;q=0.9,en;q=0.8',
+          'Referer': 'https://www.365scores.com/',
+          'Origin': 'https://www.365scores.com',
         },
-      ),
-    );
-  }
+      ).timeout(const Duration(seconds: 12));
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('مباريات الكرة المصرية 🇪🇬',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF38BDF8)),
-            tooltip: 'تحديث فوري',
-            onPressed: () => loadMatches(forceRefresh: true),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // شريط اختيار التاريخ
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            color: const Color(0xFF1E293B),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    setState(() => selectedDate =
-                        selectedDate.subtract(const Duration(days: 1)));
-                    loadMatches();
-                  },
-                  icon: const Icon(Icons.arrow_back_ios, size: 18),
-                ),
-                Text(formatDisplayDate(selectedDate),
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF38BDF8))),
-                IconButton(
-                  onPressed: () {
-                    setState(() => selectedDate =
-                        selectedDate.add(const Duration(days: 1)));
-                    loadMatches();
-                  },
-                  icon: const Icon(Icons.arrow_forward_ios, size: 18),
-                ),
-              ],
-            ),
-          ),
-          FavoriteTeamBanner(
-            favoriteTeam: favoriteTeam,
-            allMatches: matches,
-            onSelectTeamClicked: _openTeamSelector,
-          ),
-          Expanded(
-            child: isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : errorMessage != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(errorMessage!,
-                                style: const TextStyle(color: Colors.redAccent)),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: () => loadMatches(forceRefresh: true),
-                              child: const Text('إعادة المحاولة'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : matches.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.event_busy,
-                                    size: 48, color: Colors.white38),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'لا توجد مباريات مسجلة لهذا التاريخ 📅',
-                                  style: TextStyle(
-                                      color: Colors.white54, fontSize: 14),
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  'جرب التبديل لأيام أخرى باستخدام الأسهم في الأعلى',
-                                  style: TextStyle(
-                                      color: Colors.white38, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: matches.length,
-                            itemBuilder: (context, index) =>
-                                MatchCard(match: matches[index]),
-                          ),
-          ),
-        ],
-      ),
-    );
+      if (response.statusCode == 200) {
+        final String bodyText = utf8.decode(response.bodyBytes);
+        final Map<String, dynamic> data = json.decode(bodyText);
+        await prefs.setString('365_data_$cacheKey', bodyText);
+        await prefs.setInt('365_time_$cacheKey', now);
+        return data;
+      } else {
+        throw Exception('Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (cachedJson != null) {
+        return json.decode(cachedJson);
+      }
+      rethrow;
+    }
   }
 }
 ''')
 
-    print("\n🎉 تم تحديث الإعدادات والأيقونة بنجاح!");
+    print("\n🎉 تم تحديث الإعدادات وترويسات الاتصال بنجاح!");
 
 if __name__ == "__main__":
-    update_all()
+    update_fix()
