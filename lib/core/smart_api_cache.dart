@@ -9,9 +9,13 @@ class SmartApiCache {
     required Duration ttl,
     bool forceRefresh = false,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? cachedJson = prefs.getString('cache_365_$cacheKey');
-    final int? cachedTime = prefs.getInt('time_365_$cacheKey');
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {}
+
+    final String? cachedJson = prefs?.getString('cache_365_$cacheKey');
+    final int? cachedTime = prefs?.getInt('time_365_$cacheKey');
     final int now = DateTime.now().millisecondsSinceEpoch;
 
     if (!forceRefresh && cachedJson != null && cachedTime != null) {
@@ -26,18 +30,20 @@ class SmartApiCache {
         Uri.parse(url),
         headers: {
           'Accept': 'application/json',
-          'User-Agent': '365Scores-Android/12.4.0',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36',
         },
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final String bodyText = utf8.decode(response.bodyBytes);
         final Map<String, dynamic> data = json.decode(bodyText);
-        await prefs.setString('cache_365_$cacheKey', bodyText);
-        await prefs.setInt('time_365_$cacheKey', now);
+        try {
+          await prefs?.setString('cache_365_$cacheKey', bodyText);
+          await prefs?.setInt('time_365_$cacheKey', now);
+        } catch (_) {}
         return data;
       } else {
-        throw Exception('رمز الاستجابة: ${response.statusCode}');
+        throw Exception('رمز الخطأ: ${response.statusCode}');
       }
     } catch (e) {
       if (cachedJson != null) {

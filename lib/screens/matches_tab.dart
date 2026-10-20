@@ -26,7 +26,9 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
   }
 
   Future<void> _initData() async {
-    favoriteTeam = await FavoriteTeamManager.getFavorite();
+    try {
+      favoriteTeam = await FavoriteTeamManager.getFavorite();
+    } catch (_) {}
     await loadMatches();
   }
 
@@ -60,7 +62,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'خطأ في الاتصال بالسيرفر: $e';
+        errorMessage = 'تعذر الاتصال بالسيرفر. اسحب أو اضغط زر التحديث لإعادة المحاولة.';
         isLoading = false;
       });
     }
@@ -71,7 +73,9 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       context: context,
       builder: (_) => SelectFavoriteTeamDialog(
         onTeamSelected: (team) async {
-          await FavoriteTeamManager.saveFavorite(team);
+          try {
+            await FavoriteTeamManager.saveFavorite(team);
+          } catch (_) {}
           setState(() => favoriteTeam = team);
         },
       ),
@@ -164,13 +168,13 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
                                     size: 48, color: Colors.white38),
                                 const SizedBox(height: 10),
                                 const Text(
-                                  'لا توجد مباريات مسجلة في هذا اليوم 📅',
+                                  'لا توجد مباريات مسجلة لهذا التاريخ 📅',
                                   style: TextStyle(
                                       color: Colors.white54, fontSize: 14),
                                 ),
                                 const SizedBox(height: 6),
                                 const Text(
-                                  'استخدم الأسهم العلوية للتنقل بين الأيام',
+                                  'تنقل بالأسهم العلوية للاطلاع على مواعيد الجولات القادمة',
                                   style: TextStyle(
                                       color: Colors.white38, fontSize: 12),
                                 ),
