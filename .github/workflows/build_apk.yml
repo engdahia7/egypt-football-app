@@ -23,18 +23,17 @@ jobs:
       - name: Create Android Platform
         run: flutter create --platforms=android --org com.egyptfootball.app .
 
-      # تفعيل الإنترنت والسماح بمرور حركة البيانات عبر الشبكة
-      - name: Add Internet Permission & App Name
+      - name: Add Permissions & Config
         run: |
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/><application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
 
-      - name: Setup Custom App Icon
+      - name: Setup App Icon
         run: |
-          curl -sL "https://cdn-icons-png.flaticon.com/512/53/53283.png" -o icon.png
+          curl -sL "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26bd.png" -o ball.png
           for res in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
             mkdir -p android/app/src/main/res/$res
-            cp icon.png android/app/src/main/res/$res/ic_launcher.png
+            cp ball.png android/app/src/main/res/$res/ic_launcher.png
           done
 
       - name: Get Dependencies
@@ -46,5 +45,5 @@ jobs:
       - name: Upload Compact APK
         uses: actions/upload-artifact@v4
         with:
-          name: Egyptian-Football-App-Fix
+          name: Egyptian-Football-Final-APK
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk

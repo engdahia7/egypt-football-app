@@ -15,7 +15,7 @@ class CachedMatchesTab extends StatefulWidget {
 class _CachedMatchesTabState extends State<CachedMatchesTab> {
   DateTime selectedDate = DateTime.now();
   bool isLoading = false;
-  List<dynamic> matches = [];
+  List<dynamic> filteredMatches = [];
   FavoriteTeam? favoriteTeam;
   String? errorMessage;
 
@@ -30,11 +30,8 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
     await loadMatches();
   }
 
-  String format365Date(DateTime d) =>
-      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
-
-  String formatDisplayDate(DateTime d) =>
-      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+  String formatDate(DateTime date) =>
+      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
   Future<void> loadMatches({bool forceRefresh = false}) async {
     setState(() {
@@ -42,28 +39,40 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       errorMessage = null;
     });
 
-    final String dateParam = format365Date(selectedDate);
-    // رابط محسّن يجلب مباريات اليوم مع تحديد البلد (مصر) والبطولات
+    final String dateStr = formatDate(selectedDate);
     final String url =
-        'https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&startDate=$dateParam&endDate=$dateParam&competitions=${AppConstants.egyptCompetitions}';
+        'https://v3.football.api-sports.io/fixtures?date=$dateStr&timezone=Africa/Cairo';
 
     try {
       final data = await SmartApiCache.get(
-        cacheKey: '365_matches_${formatDisplayDate(selectedDate)}',
+        cacheKey: 'matches_$dateStr',
         url: url,
-        ttl: const Duration(minutes: 2),
+        ttl: dateStr == formatDate(DateTime.now())
+            ? const Duration(minutes: 15)
+            : const Duration(hours: 6),
         forceRefresh: forceRefresh,
       );
 
-      final List<dynamic> games = data['games'] ?? [];
+      final List<dynamic> allMatches = data['response'] ?? [];
+      final List<dynamic> egyptMatches = allMatches.where((match) {
+        final int leagueId = match['league']['id'];
+        final String country = match['league']['country'] ?? '';
+        final int homeId = match['teams']['home']['id'];
+        final int awayId = match['teams']['away']['id'];
+
+        return country == 'Egypt' ||
+            AppConstants.egyptianLeagueIds.contains(leagueId) ||
+            AppConstants.egyptianTeamIds.contains(homeId) ||
+            AppConstants.egyptianTeamIds.contains(awayId);
+      }).toList();
 
       setState(() {
-        matches = games;
+        filteredMatches = egyptMatches;
         isLoading = false;
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'تعذر تحميل المباريات، تأكد من الاتصال بالإنترنت.';
+        errorMessage = 'خطأ في الاتصال: $e';
         isLoading = false;
       });
     }
@@ -99,7 +108,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       ),
       body: Column(
         children: [
-          // شريط اختيار التاريخ
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             color: const Color(0xFF1E293B),
@@ -114,7 +122,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
                   },
                   icon: const Icon(Icons.arrow_back_ios, size: 18),
                 ),
-                Text(formatDisplayDate(selectedDate),
+                Text(formatDate(selectedDate),
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -132,7 +140,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
           ),
           FavoriteTeamBanner(
             favoriteTeam: favoriteTeam,
-            allMatches: matches,
+            allMatches: filteredMatches,
             onSelectTeamClicked: _openTeamSelector,
           ),
           Expanded(
@@ -141,20 +149,25 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
                     child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
                 : errorMessage != null
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(errorMessage!,
-                                style: const TextStyle(color: Colors.redAccent)),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: () => loadMatches(forceRefresh: true),
-                              child: const Text('إعادة المحاولة'),
-                            ),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(errorMessage!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Colors.redAccent, fontSize: 13)),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: () => loadMatches(forceRefresh: true),
+                                child: const Text('إعادة المحاولة'),
+                              ),
+                            ],
+                          ),
                         ),
                       )
-                    : matches.isEmpty
+                    : filteredMatches.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -163,24 +176,24 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
                                     size: 48, color: Colors.white38),
                                 const SizedBox(height: 10),
                                 const Text(
-                                  'لا توجد مباريات مسجلة لهذا التاريخ 📅',
+                                  'لا توجد مباريات مسجلة للفرق المصرية في هذا اليوم 📅',
                                   style: TextStyle(
-                                      color: Colors.white54, fontSize: 14),
+                                      color: Colors.white54, fontSize: 13),
                                 ),
                                 const SizedBox(height: 6),
                                 const Text(
-                                  'جرب التبديل لأيام أخرى باستخدام الأسهم في الأعلى',
+                                  'تنقل بالأسهم العلوية للاطلاع على مواعيد الجولات القادمة',
                                   style: TextStyle(
-                                      color: Colors.white38, fontSize: 12),
+                                      color: Colors.white38, fontSize: 11),
                                 ),
                               ],
                             ),
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: matches.length,
+                            itemCount: filteredMatches.length,
                             itemBuilder: (context, index) =>
-                                MatchCard(match: matches[index]),
+                                MatchCard(match: filteredMatches[index]),
                           ),
           ),
         ],
