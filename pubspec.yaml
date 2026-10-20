@@ -1,7 +1,7 @@
 name: egyptian_football_app
-description: تطبيق الكرة المصرية - محرك 365Scores المباشر
+description: تطبيق الكرة المصرية
 publish_to: 'none'
-version: 2.0.0+1
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   shared_preferences: ^2.2.3
-  share_plus: ^10.0.0
+  share_plus: ^10.1.2
   path_provider: ^2.1.3
 
 dev_dependencies:

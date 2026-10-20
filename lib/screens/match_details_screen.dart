@@ -28,8 +28,8 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: '365_game_${widget.gameId}',
-        url: 'https://webws.365scores.com/web/game/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&gameId=${widget.gameId}',
+        cacheKey: 'game_${widget.gameId}',
+        url: 'https://appws.365scores.com/web/game/?langId=27&timezoneName=Africa/Cairo&userCountryId=131&gameId=${widget.gameId}',
         ttl: const Duration(minutes: 1),
         forceRefresh: forceRefresh,
       );

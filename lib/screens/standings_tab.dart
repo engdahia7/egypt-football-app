@@ -10,7 +10,7 @@ class CachedStandingsTab extends StatefulWidget {
 }
 
 class _CachedStandingsTabState extends State<CachedStandingsTab> {
-  int selectedCompId = 552; // 552 = الدوري المصري الممتاز
+  int selectedCompId = 552;
   bool isLoading = false;
   List<dynamic> rows = [];
 
@@ -24,8 +24,8 @@ class _CachedStandingsTabState extends State<CachedStandingsTab> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: '365_standings_$selectedCompId',
-        url: 'https://webws.365scores.com/web/standings/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
+        cacheKey: 'standings_$selectedCompId',
+        url: 'https://appws.365scores.com/web/standings/?langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
         ttl: const Duration(hours: 1),
         forceRefresh: forceRefresh,
       );

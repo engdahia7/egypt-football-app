@@ -11,7 +11,6 @@ class SoccerPitchWidget extends StatelessWidget {
     final List<dynamic> homeMembers = homeComp['lineups']?['members'] ?? [];
     final List<dynamic> awayMembers = awayComp['lineups']?['members'] ?? [];
 
-    // status == 1 تعني لاعب أساسي في تشكيل 365Scores
     final List<dynamic> homeStarting = homeMembers.where((m) => m['status'] == 1).toList();
     final List<dynamic> awayStarting = awayMembers.where((m) => m['status'] == 1).toList();
 
@@ -50,7 +49,6 @@ class SoccerPitchWidget extends StatelessWidget {
   }) {
     if (players.isEmpty) return [];
 
-    // تقسيم التشكيل مثل "4-2-3-1" إلى صفوف: [1 (حارس), 4, 2, 3, 1]
     final List<int> rowsCounts = [1];
     for (var part in formationStr.split('-')) {
       final int? count = int.tryParse(part.trim());

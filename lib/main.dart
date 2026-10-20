@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'core/notification_service.dart';
 import 'screens/matches_tab.dart';
 import 'screens/standings_tab.dart';
 import 'screens/scorers_tab.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init();
   runApp(const EgyptianFootballApp());
 }
 
@@ -16,7 +14,7 @@ class EgyptianFootballApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'الكرة المصرية 365',
+      title: 'الكرة المصرية',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0F172A),

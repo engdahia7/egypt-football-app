@@ -73,19 +73,19 @@ class FavoriteTeamBanner extends StatelessWidget {
                 children: [
                   const Icon(Icons.stars, color: Colors.amber, size: 22),
                   const SizedBox(width: 8),
-                  Text('فريقي المفضل: ${favoriteTeam!.name}',
+                  Text('مباريات ${favoriteTeam!.name}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.amber)),
                 ],
               ),
               GestureDetector(
                 onTap: onSelectTeamClicked,
-                child: const Text('تغيير الفريق', style: TextStyle(fontSize: 12, color: Color(0xFF38BDF8))),
+                child: const Text('تغيير', style: TextStyle(fontSize: 12, color: Color(0xFF38BDF8))),
               ),
             ],
           ),
           const Divider(height: 16, color: Colors.white12),
           teamMatch == null
-              ? const Text('لا توجد مباراة مسجلة لفريقك في هذا التاريخ 📅',
+              ? const Text('لا توجد مباراة مسجلة لهذا الفريق في هذا التاريخ 📅',
                   style: TextStyle(fontSize: 12, color: Colors.white60))
               : Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -125,19 +125,9 @@ class SelectFavoriteTeamDialog extends StatelessWidget {
   const SelectFavoriteTeamDialog({super.key, required this.onTeamSelected});
 
   final List<String> egyptianTeams = const [
-    'الأهلي',
-    'الزمالك',
-    'بيراميدز',
-    'المصري',
-    'الاتحاد السكندري',
-    'الإسماعيلي',
-    'سيراميكا كليوباترا',
-    'مودرن سبورت',
-    'سموحة',
-    'إنبي',
-    'غزل المحلة',
-    'زد',
-    'مصر',
+    'الأهلي', 'الزمالك', 'بيراميدز', 'المصري', 'الاتحاد السكندري',
+    'الإسماعيلي', 'سيراميكا كليوباترا', 'مودرن سبورت', 'سموحة', 'إنبي',
+    'غزل المحلة', 'زد', 'مصر'
   ];
 
   @override

@@ -24,8 +24,8 @@ class _CachedScorersTabState extends State<CachedScorersTab> {
     setState(() => isLoading = true);
     try {
       final data = await SmartApiCache.get(
-        cacheKey: '365_scorers_$selectedCompId',
-        url: 'https://webws.365scores.com/web/stats/?appTypeId=5&langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
+        cacheKey: 'scorers_$selectedCompId',
+        url: 'https://appws.365scores.com/web/stats/?langId=27&timezoneName=Africa/Cairo&userCountryId=131&competitions=$selectedCompId',
         ttl: const Duration(hours: 2),
         forceRefresh: forceRefresh,
       );
