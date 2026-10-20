@@ -10,10 +10,10 @@ class CachedMatchesTab extends StatefulWidget {
 }
 
 class _CachedMatchesTabState extends State<CachedMatchesTab> {
-  DateTime selectedDate = DateTime(2026, 10, 21);
+  DateTime selectedDate = DateTime.now();
   bool isLoading = false;
   List<Map<String, dynamic>> matches = [];
-  String? selectedFavoriteTeam = "الأهلي";
+  String selectedFavoriteTeam = "الأهلي";
 
   @override
   void initState() {
@@ -72,7 +72,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       ),
       body: Column(
         children: [
-          // شريط اختيار التاريخ
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             color: const Color(0xFF1E293B),
@@ -98,8 +97,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               ],
             ),
           ),
-
-          // شريط الفريق المفضل
           Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -126,12 +123,22 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               ],
             ),
           ),
-
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
                 : matches.isEmpty
-                    ? const Center(child: Text('لا توجد مباريات مسجلة لهذا التاريخ 📅', style: TextStyle(color: Colors.white54)))
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.event_busy, size: 48, color: Colors.white38),
+                            const SizedBox(height: 10),
+                            const Text('لا توجد مباريات للدوري المصري في هذا التاريخ 📅', style: TextStyle(color: Colors.white54)),
+                            const SizedBox(height: 6),
+                            const Text('استخدم الأسهم العلوية لمتابعة الجولات القادمة أو السابقة', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                          ],
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         itemCount: matches.length,

@@ -6,215 +6,337 @@ def write_file(path, content):
         os.makedirs(folder, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content.strip() + "\n")
-    print(f"✅ تم إنشاء: {path}")
+    print(f"✅ تم تحديث: {path}")
 
-def build_ultimate():
-    print("🚀 جاري بناء الحل الجذري والنهائي للتطبيق...")
+def update_live_engine():
+    print("🚀 جاري ربط التطبيق بالبيانات الحية المباشرة للدوري المصري...")
 
-    # 1. pubspec.yaml خالي تماماً من مكتبات التخزين التي تنهار في الـ Release
-    write_file("pubspec.yaml", r'''
-name: egyptian_football_app
-description: تطبيق الكرة المصرية المستقر
-publish_to: 'none'
-version: 1.0.0+1
-
-environment:
-  sdk: '>=3.2.0 <4.0.0'
-
-dependencies:
-  flutter:
-    sdk: flutter
-  http: ^1.2.0
-  share_plus: ^10.1.2
-  path_provider: ^2.1.3
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-
-flutter:
-  uses-material-design: true
-''')
-
-    # 2. ملف البناء السحابي مع ضبط أذونات الشبكة للأندرويد
-    write_file(".github/workflows/build_apk.yml", r'''
-name: Build Compact APK
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: Create Android Platform
-        run: flutter create --platforms=android --org com.egyptfootball.app .
-      - name: Add Permissions & Network Config
-        run: |
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/><application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
-          sed -i 's/android:label="[^"]*"/android:label="الكرة المصرية"/g' android/app/src/main/AndroidManifest.xml
-      - name: Setup App Icon
-        run: |
-          curl -sL "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26bd.png" -o ball.png
-          for res in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
-            mkdir -p android/app/src/main/res/$res
-            cp ball.png android/app/src/main/res/$res/ic_launcher.png
-          done
-      - name: Get Dependencies
-        run: flutter pub get
-      - name: Build Optimized Split APK
-        run: flutter build apk --release --split-per-abi
-      - name: Upload Compact APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Egyptian-Football-Final-Fixed-APK
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-''')
-
-    # 3. محرك البيانات المفتوح المباشر مع Fallback مضمون ومجاني 100%
+    # 1. محرك البيانات المباشر المحدث لحظياً (مباريات حقيقية + ترتيب حقيقي + هدافين)
     write_file("lib/core/football_engine.dart", r'''
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class FootballEngine {
-  // قاعدة بيانات حية ومحدثة للفرق والبطولات المصرية
-  static final List<Map<String, dynamic>> fallbackMatches = [
-    {
-      "id": 101,
-      "league": "الدوري المصري الممتاز",
-      "home": "الأهلي",
-      "away": "الزمالك",
-      "home_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/9725.png",
-      "away_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/9726.png",
-      "time": "20:00",
-      "date": "2026-10-21",
-      "status": "لم تبدأ",
-      "home_score": null,
-      "away_score": null,
-      "tv": "أون تايم سبورتس 1 HD"
-    },
-    {
-      "id": 102,
-      "league": "الدوري المصري الممتاز",
-      "home": "بيراميدز",
-      "away": "المصري البورسعيدي",
-      "home_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023725.png",
-      "away_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023724.png",
-      "time": "17:30",
-      "date": "2026-10-21",
-      "status": "لم تبدأ",
-      "home_score": null,
-      "away_score": null,
-      "tv": "أون تايم سبورتس 2 HD"
-    },
-    {
-      "id": 103,
-      "league": "دوري أبطال أفريقيا",
-      "home": "الأهلي",
-      "away": "صن داونز",
-      "home_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/9725.png",
-      "away_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023726.png",
-      "time": "21:00",
-      "date": "2026-10-22",
-      "status": "لم تبدأ",
-      "home_score": null,
-      "away_score": null,
-      "tv": "beIN Sports HD"
-    },
-    {
-      "id": 104,
-      "league": "الدوري المصري الممتاز",
-      "home": "الاتحاد السكندري",
-      "away": "الإسماعيلي",
-      "home_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023728.png",
-      "away_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023727.png",
-      "time": "19:00",
-      "date": "2026-10-20",
-      "status": "انتهت",
-      "home_score": 1,
-      "away_score": 1,
-      "tv": "أون تايم سبورتس 1 HD"
+  static const Map<String, String> teamLogos = {
+    "الأهلي": "https://upload.wikimedia.org/wikipedia/ar/8/8c/Al_Ahly_SC_logo.png",
+    "الزمالك": "https://upload.wikimedia.org/wikipedia/ar/0/04/ZamalekSC.png",
+    "بيراميدز": "https://upload.wikimedia.org/wikipedia/ar/c/ce/Pyramids_FC_logo.png",
+    "المصري": "https://upload.wikimedia.org/wikipedia/ar/f/fa/Al-Masry_SC_Logo.png",
+    "المصري البورسعيدي": "https://upload.wikimedia.org/wikipedia/ar/f/fa/Al-Masry_SC_Logo.png",
+    "الاتحاد السكندري": "https://upload.wikimedia.org/wikipedia/ar/4/4c/Al_Ittihad_Alexandria_Club_logo.png",
+    "الإسماعيلي": "https://upload.wikimedia.org/wikipedia/ar/0/0c/Ismaily_SC_logo.png",
+    "زد إف سي": "https://upload.wikimedia.org/wikipedia/ar/4/4b/ZED_FC_logo.png",
+    "سيراميكا كليوباترا": "https://upload.wikimedia.org/wikipedia/ar/c/cf/Ceramica_Cleopatra_FC_Logo.png",
+    "سموحة": "https://upload.wikimedia.org/wikipedia/ar/8/87/Smouha_SC_Logo.png",
+    "طلائع الجيش": "https://upload.wikimedia.org/wikipedia/ar/5/5a/Tala%27ea_El_Gaish_SC_logo.png",
+    "إنبي": "https://upload.wikimedia.org/wikipedia/ar/7/75/ENPPI_Club_logo.png",
+    "مودرن سبورت": "https://upload.wikimedia.org/wikipedia/ar/0/00/Modern_Sport_FC_logo.png",
+    "غزل المحلة": "https://upload.wikimedia.org/wikipedia/ar/3/36/Ghazl_El_Mahalla_SC_logo.png",
+    "فاركو": "https://upload.wikimedia.org/wikipedia/ar/9/98/Pharco_FC_logo.png",
+    "الجونة": "https://upload.wikimedia.org/wikipedia/ar/2/23/El_Gouna_FC_logo.png",
+    "البنك الأهلي": "https://upload.wikimedia.org/wikipedia/ar/2/2f/National_Bank_of_Egypt_SC_logo.png",
+    "حرس الحدود": "https://upload.wikimedia.org/wikipedia/ar/0/09/Haras_El_Hodood_SC_logo.png",
+    "بتروجيت": "https://upload.wikimedia.org/wikipedia/ar/8/81/Petrojet_SC_logo.png",
+  };
+
+  static String getLogo(String teamName) {
+    for (var key in teamLogos.keys) {
+      if (teamName.contains(key) || key.contains(teamName)) {
+        return teamLogos[key]!;
+      }
     }
-  ];
+    return "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26bd.png";
+  }
 
-  static final List<Map<String, dynamic>> standings = [
-    {"rank": 1, "team": "الأهلي", "played": 5, "points": 13, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/9725.png"},
-    {"rank": 2, "team": "بيراميدز", "played": 5, "points": 11, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023725.png"},
-    {"rank": 3, "team": "الزمالك", "played": 5, "points": 10, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/9726.png"},
-    {"rank": 4, "team": "المصري البورسعيدي", "played": 5, "points": 9, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023724.png"},
-    {"rank": 5, "team": "زد إف سي", "played": 5, "points": 8, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023728.png"},
-    {"rank": 6, "team": "الاتحاد السكندري", "played": 5, "points": 8, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023728.png"},
-    {"rank": 7, "team": "سيراميكا كليوباترا", "played": 5, "points": 7, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023727.png"},
-    {"rank": 8, "team": "سموحة", "played": 5, "points": 6, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023728.png"},
-    {"rank": 9, "team": "الإسماعيلي", "played": 5, "points": 5, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023727.png"},
-    {"rank": 10, "team": "غزل المحلة", "played": 5, "points": 4, "logo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023728.png"}
-  ];
-
-  static final List<Map<String, dynamic>> topScorers = [
-    {"rank": 1, "name": "وسام أبو علي", "team": "الأهلي", "goals": 4, "photo": "https://images.fotmob.com/image_resources/logo/teamlogo/9725.png"},
-    {"rank": 2, "name": "ناصر منسي", "team": "الزمالك", "goals": 3, "photo": "https://images.fotmob.com/image_resources/logo/teamlogo/9726.png"},
-    {"rank": 3, "name": "فيستون ماييلي", "team": "بيراميدز", "goals": 3, "photo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023725.png"},
-    {"rank": 4, "name": "صلاح محسن", "team": "المصري", "goals": 2, "photo": "https://images.fotmob.com/image_resources/logo/teamlogo/1023724.png"},
-    {"rank": 5, "name": "إمام عاشور", "team": "الأهلي", "goals": 2, "photo": "https://images.fotmob.com/image_resources/logo/teamlogo/9725.png"}
-  ];
-
-  // دالة جلب المباريات مع تأمين الاتصال ومطابقة التاريخ
+  // 1. جلب مباريات اليوم الحقيقية مباشرة
   static Future<List<Map<String, dynamic>>> getMatches(String dateStr) async {
+    final cleanDate = dateStr.replaceAll("-", "");
+    final url = 'https://www.fotmob.com/api/matches?date=$cleanDate&timezone=Africa%2FCairo';
+
     try {
-      // محاولة سحب جدول الدوري من واجهة FotMob المفتوحة تماماً
       final response = await http.get(
-        Uri.parse('https://www.fotmob.com/api/matches?date=${dateStr.replaceAll("-", "")}&timezone=Africa%2FCairo'),
-        headers: {'User-Agent': 'Mozilla/5.0'}
-      ).timeout(const Duration(seconds: 4));
+        Uri.parse(url),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         final List<dynamic> leagues = data['leagues'] ?? [];
-        List<Map<String, dynamic>> liveList = [];
+        List<Map<String, dynamic>> results = [];
 
         for (var lg in leagues) {
-          final String lName = lg['name'] ?? '';
-          final String cName = lg['ccode'] ?? '';
-          if (cName == 'EGY' || lName.contains('Egypt') || lName.contains('CAF')) {
+          final String leagueName = lg['name'] ?? '';
+          final String country = lg['ccode'] ?? '';
+          
+          // حصر المباريات في بطولات مصر أو الأندية المصرية في البطولات القارية
+          final bool isEgypt = country == 'EGY' || 
+                               leagueName.contains('Egypt') || 
+                               leagueName.contains('الدوري المصري') ||
+                               leagueName.contains('كأس مصر') ||
+                               leagueName.contains('CAF');
+
+          if (isEgypt) {
             for (var m in (lg['matches'] ?? [])) {
-              liveList.add({
+              final homeName = m['home']['name'] ?? '';
+              final awayName = m['away']['name'] ?? '';
+              final status = m['status'] ?? {};
+              final bool started = status['started'] ?? false;
+              final bool finished = status['finished'] ?? false;
+
+              String statusText = 'لم تبدأ';
+              if (finished) {
+                statusText = 'انتهت';
+              } else if (started) {
+                statusText = 'مباشر ${status['liveTime']?['short'] ?? ''}';
+              }
+
+              results.add({
                 "id": m['id'],
-                "league": lName,
-                "home": m['home']['name'],
-                "away": m['away']['name'],
-                "home_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/${m['home']['id']}.png",
-                "away_logo": "https://images.fotmob.com/image_resources/logo/teamlogo/${m['away']['id']}.png",
-                "time": m['status']?['startTimeStr'] ?? '20:00',
+                "league": leagueName,
+                "home": homeName,
+                "away": awayName,
+                "home_logo": getLogo(homeName),
+                "away_logo": getLogo(awayName),
+                "time": status['startTimeStr'] ?? '20:00',
                 "date": dateStr,
-                "status": m['status']?['started'] == true ? (m['status']?['finished'] == true ? 'انتهت' : 'مباشر') : 'لم تبدأ',
-                "home_score": m['home']?['score'],
-                "away_score": m['away']?['score'],
+                "status": statusText,
+                "home_score": started ? m['home']['score'] : null,
+                "away_score": started ? m['away']['score'] : null,
                 "tv": "أون تايم سبورتس HD"
               });
             }
           }
         }
-        if (liveList.isNotEmpty) return liveList;
+        return results;
       }
     } catch (_) {}
+    return [];
+  }
 
-    // في حال عدم وجود مباريات في هذا التاريخ من الخادم الحي، إرجاع المباريات المجدولة المعتمدة
-    return fallbackMatches.where((m) => m['date'] == dateStr || dateStr.endsWith("21")).toList();
+  // 2. جلب جدول ترتيب الدوري المصري الفعلي مباشرة
+  static Future<List<Map<String, dynamic>>> getStandings() async {
+    // كود الدوري المصري في واجهة البطولات هو 322
+    const url = 'https://www.fotmob.com/api/leagues?id=322&tab=table&type=league&timeZone=Africa%2FCairo';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'Mozilla/5.0'},
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final tableData = data['table']?[0]?['data']?['table']?['all'] ?? [];
+        List<Map<String, dynamic>> standings = [];
+
+        for (var row in tableData) {
+          final String tName = row['name'] ?? '';
+          standings.add({
+            "rank": row['idx'] ?? 0,
+            "team": tName,
+            "played": row['played'] ?? 0,
+            "wins": row['wins'] ?? 0,
+            "draws": row['draws'] ?? 0,
+            "losses": row['losses'] ?? 0,
+            "points": row['pts'] ?? 0,
+            "logo": getLogo(tName),
+          });
+        }
+        if (standings.isNotEmpty) return standings;
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // 3. جلب قائمة هدافي الدوري المصري الحقيقية مباشرة
+  static Future<List<Map<String, dynamic>>> getScorers() async {
+    const url = 'https://www.fotmob.com/api/leagues?id=322&tab=stats&type=league&timeZone=Africa%2FCairo';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'Mozilla/5.0'},
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final List<dynamic> topScorersRaw = data['stats']?['players']?[0]?['topThree'] ?? 
+                                           data['stats']?['players']?[0]?['data'] ?? [];
+        List<Map<String, dynamic>> scorers = [];
+
+        int rank = 1;
+        for (var p in topScorersRaw) {
+          final String pName = p['name'] ?? '';
+          final String tName = p['teamName'] ?? '';
+          scorers.add({
+            "rank": rank++,
+            "name": pName,
+            "team": tName,
+            "goals": p['value'] ?? p['count'] ?? 0,
+            "photo": getLogo(tName),
+          });
+        }
+        if (scorers.isNotEmpty) return scorers;
+      }
+    } catch (_) {}
+    return [];
   }
 }
 ''')
 
-    # 4. شاشة المباريات السلسة والآمنة
+    # 2. تحديث شاشة الترتيب لتسحب البيانات الحية
+    write_file("lib/screens/standings_tab.dart", r'''
+import 'package:flutter/material.dart';
+import '../core/football_engine.dart';
+
+class CachedStandingsTab extends StatefulWidget {
+  const CachedStandingsTab({super.key});
+
+  @override
+  State<CachedStandingsTab> createState() => _CachedStandingsTabState();
+}
+
+class _CachedStandingsTabState extends State<CachedStandingsTab> {
+  bool isLoading = true;
+  List<Map<String, dynamic>> table = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadStandings();
+  }
+
+  Future<void> loadStandings() async {
+    setState(() => isLoading = true);
+    final data = await FootballEngine.getStandings();
+    setState(() {
+      table = data;
+      isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('جدول ترتيب الدوري المصري 🏆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        centerTitle: true,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh, color: Color(0xFF38BDF8)), onPressed: loadStandings),
+        ],
+      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+          : table.isEmpty
+              ? const Center(child: Text('جاري تحديث جدول الترتيب مع بداية الجولة...', style: TextStyle(color: Colors.white54)))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: table.length,
+                  itemBuilder: (context, index) {
+                    final row = table[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      child: ListTile(
+                        dense: true,
+                        leading: Text('${row['rank']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        title: Row(
+                          children: [
+                            Image.network(row['logo'], width: 26, height: 26, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 22)),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(row['team'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                          ],
+                        ),
+                        trailing: Text(
+                          '${row['points']} نقطة (لعب ${row['played']})',
+                          style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+''')
+
+    # 3. تحديث شاشة الهدافين لتسحب البيانات الحية
+    write_file("lib/screens/scorers_tab.dart", r'''
+import 'package:flutter/material.dart';
+import '../core/football_engine.dart';
+
+class CachedScorersTab extends StatefulWidget {
+  const CachedScorersTab({super.key});
+
+  @override
+  State<CachedScorersTab> createState() => _CachedScorersTabState();
+}
+
+class _CachedScorersTabState extends State<CachedScorersTab> {
+  bool isLoading = true;
+  List<Map<String, dynamic>> scorers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadScorers();
+  }
+
+  Future<void> loadScorers() async {
+    setState(() => isLoading = true);
+    final data = await FootballEngine.getScorers();
+    setState(() {
+      scorers = data;
+      isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('قائمة الهدافين 👟⚽', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        centerTitle: true,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh, color: Color(0xFF38BDF8)), onPressed: loadScorers),
+        ],
+      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+          : scorers.isEmpty
+              ? const Center(child: Text('جاري تحديث إحصائيات الهدافين...', style: TextStyle(color: Colors.white54)))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: scorers.length,
+                  itemBuilder: (context, index) {
+                    final s = scorers[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFF0F172A),
+                          backgroundImage: NetworkImage(s['photo']),
+                        ),
+                        title: Text(s['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(s['team']),
+                        trailing: Text(
+                          '${s['goals']} أهداف',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+''')
+
+    # 4. تحديث شاشة المباريات لتبدأ من تاريخ اليوم الحالي تلقائياً
     write_file("lib/screens/matches_tab.dart", r'''
 import 'package:flutter/material.dart';
 import '../core/football_engine.dart';
@@ -228,10 +350,10 @@ class CachedMatchesTab extends StatefulWidget {
 }
 
 class _CachedMatchesTabState extends State<CachedMatchesTab> {
-  DateTime selectedDate = DateTime(2026, 10, 21);
+  DateTime selectedDate = DateTime.now();
   bool isLoading = false;
   List<Map<String, dynamic>> matches = [];
-  String? selectedFavoriteTeam = "الأهلي";
+  String selectedFavoriteTeam = "الأهلي";
 
   @override
   void initState() {
@@ -290,7 +412,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
       ),
       body: Column(
         children: [
-          // شريط اختيار التاريخ
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             color: const Color(0xFF1E293B),
@@ -316,8 +437,6 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               ],
             ),
           ),
-
-          // شريط الفريق المفضل
           Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -344,12 +463,22 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               ],
             ),
           ),
-
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
                 : matches.isEmpty
-                    ? const Center(child: Text('لا توجد مباريات مسجلة لهذا التاريخ 📅', style: TextStyle(color: Colors.white54)))
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.event_busy, size: 48, color: Colors.white38),
+                            const SizedBox(height: 10),
+                            const Text('لا توجد مباريات للدوري المصري في هذا التاريخ 📅', style: TextStyle(color: Colors.white54)),
+                            const SizedBox(height: 6),
+                            const Text('استخدم الأسهم العلوية لمتابعة الجولات القادمة أو السابقة', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                          ],
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         itemCount: matches.length,
@@ -363,331 +492,7 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
 }
 ''')
 
-    # 5. كارت المباراة
-    write_file("lib/widgets/match_card.dart", r'''
-import 'package:flutter/material.dart';
-import '../screens/match_details_screen.dart';
-
-class MatchCard extends StatelessWidget {
-  final Map<String, dynamic> match;
-  const MatchCard({super.key, required this.match});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isLive = match['status'] == 'مباشر';
-    final bool isFinished = match['status'] == 'انتهت';
-    final hasScore = match['home_score'] != null;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Directionality(
-              textDirection: TextDirection.rtl,
-              child: MatchDetailsScreen(match: match),
-            ),
-          ),
-        );
-      },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          child: Column(
-            children: [
-              Text(match['league'] ?? '', style: const TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Image.network(match['home_logo'], width: 38, height: 38, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 36)),
-                        const SizedBox(height: 6),
-                        Text(match['home'], textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      children: [
-                        Text(
-                          hasScore ? '${match['home_score']}  -  ${match['away_score']}' : match['time'],
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: hasScore ? Colors.white : const Color(0xFF38BDF8)),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          match['status'],
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isLive ? Colors.redAccent : (isFinished ? Colors.greenAccent : Colors.white54),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Image.network(match['away_logo'], width: 38, height: 38, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 36)),
-                        const SizedBox(height: 6),
-                        Text(match['away'], textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-''')
-
-    # 6. تفاصيل المباراة والتشكيل
-    write_file("lib/screens/match_details_screen.dart", r'''
-import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
-
-class MatchDetailsScreen extends StatelessWidget {
-  final Map<String, dynamic> match;
-  const MatchDetailsScreen({super.key, required this.match});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: Text(match['league'] ?? 'تفاصيل المباراة', style: const TextStyle(fontSize: 16)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.greenAccent),
-            onPressed: () {
-              Share.share('⚽ مباراة: ${match['home']} ضد ${match['away']}\n⏰ الموعد: ${match['time']}\n📺 القناة: ${match['tv']}\nعبر تطبيق الكرة المصرية 🇪🇬');
-            },
-          )
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: const Color(0xFF1E293B), borderRadius: BorderRadius.circular(16)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
-                  children: [
-                    Image.network(match['home_logo'], width: 52, height: 52, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 48)),
-                    const SizedBox(height: 8),
-                    Text(match['home'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  ],
-                ),
-                Text(
-                  match['home_score'] != null ? '${match['home_score']} : ${match['away_score']}' : match['time'],
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
-                ),
-                Column(
-                  children: [
-                    Image.network(match['away_logo'], width: 52, height: 52, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 48)),
-                    const SizedBox(height: 8),
-                    Text(match['away'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.tv, color: Colors.amber),
-              title: const Text('القناة الناقلة'),
-              subtitle: Text(match['tv'] ?? 'أون تايم سبورتس HD', style: const TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.stadium, color: Color(0xFF38BDF8)),
-              title: const Text('الملعب'),
-              subtitle: const Text('ستاد القاهرة الدولي', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-''')
-
-    # 7. جدول الترتيب
-    write_file("lib/screens/standings_tab.dart", r'''
-import 'package:flutter/material.dart';
-import '../core/football_engine.dart';
-
-class CachedStandingsTab extends StatelessWidget {
-  const CachedStandingsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final list = FootballEngine.standings;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('جدول ترتيب الدوري المصري 🏆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          final row = list[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 6),
-            child: ListTile(
-              dense: true,
-              leading: Text('${row['rank']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              title: Row(
-                children: [
-                  Image.network(row['logo'], width: 26, height: 26, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 22)),
-                  const SizedBox(width: 10),
-                  Text(row['team'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                ],
-              ),
-              trailing: Text(
-                '${row['points']} نقطة (لعب ${row['played']})',
-                style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-''')
-
-    # 8. قائمة الهدافين
-    write_file("lib/screens/scorers_tab.dart", r'''
-import 'package:flutter/material.dart';
-import '../core/football_engine.dart';
-
-class CachedScorersTab extends StatelessWidget {
-  const CachedScorersTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final list = FootballEngine.topScorers;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('قائمة الهدافين 👟⚽', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          final s = list[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: const Color(0xFF0F172A),
-                backgroundImage: NetworkImage(s['photo']),
-              ),
-              title: Text(s['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(s['team']),
-              trailing: Text(
-                '${s['goals']} أهداف',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-''')
-
-    # 9. ملف التشغيل main.dart
-    write_file("lib/main.dart", r'''
-import 'package:flutter/material.dart';
-import 'screens/matches_tab.dart';
-import 'screens/standings_tab.dart';
-import 'screens/scorers_tab.dart';
-
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const EgyptianFootballApp());
-}
-
-class EgyptianFootballApp extends StatelessWidget {
-  const EgyptianFootballApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'الكرة المصرية',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        cardColor: const Color(0xFF1E293B),
-      ),
-      home: const Directionality(
-        textDirection: TextDirection.rtl,
-        child: MainLayoutScreen(),
-      ),
-    );
-  }
-}
-
-class MainLayoutScreen extends StatefulWidget {
-  const MainLayoutScreen({super.key});
-
-  @override
-  State<MainLayoutScreen> createState() => _MainLayoutScreenState();
-}
-
-class _MainLayoutScreenState extends State<MainLayoutScreen> {
-  int _currentIndex = 0;
-  final List<Widget> _screens = const [
-    CachedMatchesTab(),
-    CachedStandingsTab(),
-    CachedScorersTab(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        backgroundColor: const Color(0xFF1E293B),
-        selectedItemColor: const Color(0xFF38BDF8),
-        unselectedItemColor: Colors.white54,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'المباريات'),
-          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: 'الترتيب'),
-          BottomNavigationBarItem(icon: Icon(Icons.emoji_events), label: 'الهدافون'),
-        ],
-      ),
-    );
-  }
-}
-''')
-
-    print("\n🎉 تم بناء النسخة الجذرية بنجاح تام وبدون أي تبعيات مكسورة!");
+    print("\n🎉 تم تحديث المشروع بالكامل لجلب البيانات الحية الحقيقية بنجاح!");
 
 if __name__ == "__main__":
-    build_ultimate()
+    update_live_engine()
