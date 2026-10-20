@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/app_constants.dart';
-import '../core/smart_api_cache.dart';
-import '../models/favorite_team.dart';
-import '../widgets/favorite_team_banner.dart';
+import '../core/football_engine.dart';
 import '../widgets/match_card.dart';
 
 class CachedMatchesTab extends StatefulWidget {
@@ -13,71 +10,48 @@ class CachedMatchesTab extends StatefulWidget {
 }
 
 class _CachedMatchesTabState extends State<CachedMatchesTab> {
-  DateTime selectedDate = DateTime.now();
+  DateTime selectedDate = DateTime(2026, 10, 21);
   bool isLoading = false;
-  List<dynamic> matches = [];
-  FavoriteTeam? favoriteTeam;
-  String? errorMessage;
+  List<Map<String, dynamic>> matches = [];
+  String? selectedFavoriteTeam = "الأهلي";
 
   @override
   void initState() {
     super.initState();
-    _initData();
+    loadMatches();
   }
 
-  Future<void> _initData() async {
-    try {
-      favoriteTeam = await FavoriteTeamManager.getFavorite();
-    } catch (_) {}
-    await loadMatches();
-  }
-
-  String format365Date(DateTime d) =>
-      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
-
-  String formatDisplayDate(DateTime d) =>
+  String formatDate(DateTime d) =>
       "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
-  Future<void> loadMatches({bool forceRefresh = false}) async {
+  Future<void> loadMatches() async {
+    setState(() => isLoading = true);
+    final list = await FootballEngine.getMatches(formatDate(selectedDate));
     setState(() {
-      isLoading = true;
-      errorMessage = null;
+      matches = list;
+      isLoading = false;
     });
-
-    final String dateParam = format365Date(selectedDate);
-    final String url =
-        'https://appws.365scores.com/web/games/allscores/?langId=27&timezoneName=Africa/Cairo&userCountryId=131&startDate=$dateParam&endDate=$dateParam&competitions=${AppConstants.egyptCompetitions}';
-
-    try {
-      final data = await SmartApiCache.get(
-        cacheKey: 'matches_${formatDisplayDate(selectedDate)}',
-        url: url,
-        ttl: const Duration(minutes: 2),
-        forceRefresh: forceRefresh,
-      );
-
-      setState(() {
-        matches = data['games'] ?? [];
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = 'تعذر الاتصال بالسيرفر. اسحب أو اضغط زر التحديث لإعادة المحاولة.';
-        isLoading = false;
-      });
-    }
   }
 
-  void _openTeamSelector() {
+  void _chooseFavoriteTeam() {
     showDialog(
       context: context,
-      builder: (_) => SelectFavoriteTeamDialog(
-        onTeamSelected: (team) async {
-          try {
-            await FavoriteTeamManager.saveFavorite(team);
-          } catch (_) {}
-          setState(() => favoriteTeam = team);
-        },
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('اختر فريقك المفضل', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: ['الأهلي', 'الزمالك', 'بيراميدز', 'المصري', 'الاتحاد السكندري', 'الإسماعيلي'].map((name) {
+            return ListTile(
+              leading: const Icon(Icons.shield, color: Color(0xFF38BDF8)),
+              title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                setState(() => selectedFavoriteTeam = name);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -87,19 +61,18 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('مباريات الكرة المصرية 🇪🇬',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('مباريات الكرة المصرية 🇪🇬', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Color(0xFF38BDF8)),
-            tooltip: 'تحديث فوري',
-            onPressed: () => loadMatches(forceRefresh: true),
+            onPressed: loadMatches,
           ),
         ],
       ),
       body: Column(
         children: [
+          // شريط اختيار التاريخ
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             color: const Color(0xFF1E293B),
@@ -108,21 +81,16 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               children: [
                 IconButton(
                   onPressed: () {
-                    setState(() => selectedDate =
-                        selectedDate.subtract(const Duration(days: 1)));
+                    setState(() => selectedDate = selectedDate.subtract(const Duration(days: 1)));
                     loadMatches();
                   },
                   icon: const Icon(Icons.arrow_back_ios, size: 18),
                 ),
-                Text(formatDisplayDate(selectedDate),
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF38BDF8))),
+                Text(formatDate(selectedDate),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                 IconButton(
                   onPressed: () {
-                    setState(() => selectedDate =
-                        selectedDate.add(const Duration(days: 1)));
+                    setState(() => selectedDate = selectedDate.add(const Duration(days: 1)));
                     loadMatches();
                   },
                   icon: const Icon(Icons.arrow_forward_ios, size: 18),
@@ -130,63 +98,45 @@ class _CachedMatchesTabState extends State<CachedMatchesTab> {
               ],
             ),
           ),
-          FavoriteTeamBanner(
-            favoriteTeam: favoriteTeam,
-            allMatches: matches,
-            onSelectTeamClicked: _openTeamSelector,
+
+          // شريط الفريق المفضل
+          Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.amber.withOpacity(0.5)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.stars, color: Colors.amber, size: 24),
+                    const SizedBox(width: 8),
+                    Text('الفريق المفضل: $selectedFavoriteTeam',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber)),
+                  ],
+                ),
+                TextButton(
+                  onPressed: _chooseFavoriteTeam,
+                  child: const Text('تغيير', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
           ),
+
           Expanded(
             child: isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
-                : errorMessage != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(errorMessage!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                      color: Colors.redAccent, fontSize: 13)),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: () => loadMatches(forceRefresh: true),
-                                child: const Text('إعادة المحاولة'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : matches.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.event_busy,
-                                    size: 48, color: Colors.white38),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'لا توجد مباريات مسجلة لهذا التاريخ 📅',
-                                  style: TextStyle(
-                                      color: Colors.white54, fontSize: 14),
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  'تنقل بالأسهم العلوية للاطلاع على مواعيد الجولات القادمة',
-                                  style: TextStyle(
-                                      color: Colors.white38, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: matches.length,
-                            itemBuilder: (context, index) =>
-                                MatchCard(match: matches[index]),
-                          ),
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                : matches.isEmpty
+                    ? const Center(child: Text('لا توجد مباريات مسجلة لهذا التاريخ 📅', style: TextStyle(color: Colors.white54)))
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: matches.length,
+                        itemBuilder: (context, index) => MatchCard(match: matches[index]),
+                      ),
           ),
         ],
       ),

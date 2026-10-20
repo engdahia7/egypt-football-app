@@ -1,5 +1,5 @@
 name: egyptian_football_app
-description: تطبيق الكرة المصرية
+description: تطبيق الكرة المصرية المستقر
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,8 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
-  shared_preferences: 2.2.3
-  shared_preferences_android: 2.4.28
   share_plus: ^10.1.2
   path_provider: ^2.1.3
 
